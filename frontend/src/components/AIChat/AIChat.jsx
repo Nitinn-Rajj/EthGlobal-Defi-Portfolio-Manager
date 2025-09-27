@@ -242,13 +242,6 @@ const AIChat = () => {
 
   return (
     <div className="ai-chat">
-      <div className="ai-chat__header">
-        <div className="ai-chat__header-icon">🤖</div>
-        <div className="ai-chat__header-info">
-          <h3>DeFi AI Agent</h3>
-          <span className="ai-chat__status">Online</span>
-        </div>
-      </div>
       
       <div className="ai-chat__messages-container">
         <div className="ai-chat__messages" ref={messagesContainerRef}>
@@ -298,12 +291,12 @@ const AIChat = () => {
         </div>
         
         {/* Scroll Indicator */}
-        {!isNearBottom && messages.length > 5 && (
+        {/* {!isNearBottom && messages.length > 5 && (
           <div className="ai-chat__scroll-indicator">
             <span>New messages below</span>
             <button onClick={jumpToBottom}>↓</button>
           </div>
-        )}
+        )} */}
       </div>
       
       {pendingSwap && (

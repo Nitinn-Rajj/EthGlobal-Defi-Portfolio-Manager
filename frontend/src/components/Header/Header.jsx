@@ -96,7 +96,7 @@ const Header = () => {
               onClick={toggleChat}
               title={isChatOpen ? 'Close AI Chat' : 'Open AI Chat'}
             >
-              <span className="header__nav-btn-icon">🤖</span>
+              {/* <span className="header__nav-btn-icon"></span> */}
               AI Chat
             </button>
             
@@ -159,9 +159,9 @@ const Header = () => {
                     <span className="header__disconnect-icon">⚡</span>
                     Force Disconnect
                   </button>
-                  <div className="header__disconnect-info">
+                  {/* <div className="header__disconnect-info">
                     <small>Force disconnect clears all data and reloads the page</small>
-                  </div>
+                  </div> */}
                 </div>
               )}
               

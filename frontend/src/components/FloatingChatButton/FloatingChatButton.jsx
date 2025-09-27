@@ -16,8 +16,8 @@ const FloatingChatButton = () => {
       aria-label="Open AI Chat Assistant"
       title="Open AI Chat Assistant"
     >
-      <span className="floating-chat-btn__icon">🤖</span>
-      <div className="floating-chat-btn__pulse"></div>
+      <span className="floating-chat-btn__icon">🙄</span>
+      <div className="floating-chat-btn__pulse">I'm cooked</div>
     </button>
   );
 };
