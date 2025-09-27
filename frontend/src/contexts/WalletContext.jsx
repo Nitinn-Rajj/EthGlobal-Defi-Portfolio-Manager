@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import {
   connectMetaMask,
   getCurrentAccount,
@@ -12,6 +12,7 @@ import {
   getManualDisconnectInstructions,
   getDisconnectStatusMessage,
 } from '../utils/wallet';
+import { getDashboardDataAndParse } from '../apiservices/dashboardService';
 
 // Initial state
 const initialState = {
@@ -21,6 +22,10 @@ const initialState = {
   network: null,
   isConnecting: false,
   error: null,
+  dashboardData: null,
+  isLoadingDashboard: false,
+  hasLoadedDashboardThisSession: false,
+  lastDashboardRequestTime: null,
 };
 
 // Action types
@@ -31,6 +36,11 @@ const WALLET_ACTIONS = {
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
   UPDATE_BALANCE: 'UPDATE_BALANCE',
+  SET_LOADING_DASHBOARD: 'SET_LOADING_DASHBOARD',
+  SET_DASHBOARD_DATA: 'SET_DASHBOARD_DATA',
+  SET_DASHBOARD_ERROR: 'SET_DASHBOARD_ERROR',
+  SET_DASHBOARD_LOADED_THIS_SESSION: 'SET_DASHBOARD_LOADED_THIS_SESSION',
+  SET_LAST_DASHBOARD_REQUEST_TIME: 'SET_LAST_DASHBOARD_REQUEST_TIME',
 };
 
 // Reducer
@@ -72,6 +82,34 @@ const walletReducer = (state, action) => {
         ...state,
         balance: action.payload,
       };
+    case WALLET_ACTIONS.SET_LOADING_DASHBOARD:
+      return {
+        ...state,
+        isLoadingDashboard: action.payload,
+      };
+    case WALLET_ACTIONS.SET_DASHBOARD_DATA:
+      return {
+        ...state,
+        dashboardData: action.payload,
+        isLoadingDashboard: false,
+        hasLoadedDashboardThisSession: true,
+      };
+    case WALLET_ACTIONS.SET_DASHBOARD_ERROR:
+      return {
+        ...state,
+        isLoadingDashboard: false,
+        error: action.payload,
+      };
+    case WALLET_ACTIONS.SET_DASHBOARD_LOADED_THIS_SESSION:
+      return {
+        ...state,
+        hasLoadedDashboardThisSession: action.payload,
+      };
+    case WALLET_ACTIONS.SET_LAST_DASHBOARD_REQUEST_TIME:
+      return {
+        ...state,
+        lastDashboardRequestTime: action.payload,
+      };
     default:
       return state;
   }
@@ -80,9 +118,109 @@ const walletReducer = (state, action) => {
 // Create context
 const WalletContext = createContext();
 
+// Rate limiting constants
+const DASHBOARD_REQUEST_RATE_LIMIT_MS = 60 * 1000; // 1 minute in milliseconds
+
+// Global request lock to prevent concurrent requests
+let dashboardRequestInProgress = false;
+let requestCounter = 0;
+
 // Provider component
 export const WalletProvider = ({ children }) => {
   const [state, dispatch] = useReducer(walletReducer, initialState);
+
+  // Check if enough time has passed since last dashboard request
+  const canMakeDashboardRequest = () => {
+    if (!state.lastDashboardRequestTime) return true;
+    
+    const now = Date.now();
+    const timeSinceLastRequest = now - state.lastDashboardRequestTime;
+    return timeSinceLastRequest >= DASHBOARD_REQUEST_RATE_LIMIT_MS;
+  };
+
+  // Get remaining time before next request is allowed
+  const getRemainingRateLimitTime = () => {
+    if (!state.lastDashboardRequestTime) return 0;
+    
+    const now = Date.now();
+    const timeSinceLastRequest = now - state.lastDashboardRequestTime;
+    const remainingTime = DASHBOARD_REQUEST_RATE_LIMIT_MS - timeSinceLastRequest;
+    return Math.max(0, remainingTime);
+  };
+
+  // Load dashboard data for connected wallet
+  const loadDashboardData = useCallback(async (walletAddress, forceRefresh = false) => {
+    if (!walletAddress) {
+      console.log('❌ No wallet address provided, skipping dashboard data load');
+      return;
+    }
+
+    // Prevent concurrent requests
+    if (dashboardRequestInProgress) {
+      console.log('🔒 Dashboard request already in progress, skipping...');
+      return;
+    }
+
+    requestCounter++;
+    const currentRequestId = requestCounter;
+    console.log(`🔍 Dashboard load check #${currentRequestId}:`, {
+      walletAddress,
+      forceRefresh,
+      hasLoadedThisSession: state.hasLoadedDashboardThisSession,
+      canMakeRequest: canMakeDashboardRequest(),
+      lastRequestTime: state.lastDashboardRequestTime,
+      currentTime: Date.now()
+    });
+
+    // If data has already been loaded this session and not forcing refresh, skip
+    if (state.hasLoadedDashboardThisSession && !forceRefresh) {
+      console.log(`⏭️ Dashboard data already loaded this session, skipping request #${currentRequestId}...`);
+      return;
+    }
+
+    // Check rate limiting unless forcing refresh
+    if (!forceRefresh && !canMakeDashboardRequest()) {
+      const remainingTime = Math.ceil(getRemainingRateLimitTime() / 1000);
+      console.log(`⏳ Dashboard request #${currentRequestId} rate limited. Wait ${remainingTime} seconds before next request.`);
+      return;
+    }
+
+    // Set the global lock
+    dashboardRequestInProgress = true;
+    console.log(`🚀 Making dashboard API request #${currentRequestId}...`);
+    dispatch({ type: WALLET_ACTIONS.SET_LOADING_DASHBOARD, payload: true });
+
+    try {
+      // Update the last request time before making the request
+      const requestTime = Date.now();
+      dispatch({
+        type: WALLET_ACTIONS.SET_LAST_DASHBOARD_REQUEST_TIME,
+        payload: requestTime,
+      });
+
+      const dashboardData = await getDashboardDataAndParse(walletAddress, forceRefresh);
+      console.log(`✅ Dashboard data loaded successfully for request #${currentRequestId}`);
+      dispatch({
+        type: WALLET_ACTIONS.SET_DASHBOARD_DATA,
+        payload: dashboardData,
+      });
+    } catch (error) {
+      console.error(`❌ Error loading dashboard data for request #${currentRequestId}:`, error);
+      dispatch({
+        type: WALLET_ACTIONS.SET_DASHBOARD_ERROR,
+        payload: 'Failed to load portfolio data',
+      });
+      
+      // Clear dashboard error after 5 seconds
+      setTimeout(() => {
+        dispatch({ type: WALLET_ACTIONS.CLEAR_ERROR });
+      }, 5000);
+    } finally {
+      // Always release the lock
+      dashboardRequestInProgress = false;
+      console.log(`🔓 Released lock for dashboard request #${currentRequestId}`);
+    }
+  }, [state.hasLoadedDashboardThisSession, state.lastDashboardRequestTime]);
 
   // Connect wallet function
   const connect = async () => {
@@ -102,6 +240,9 @@ export const WalletProvider = ({ children }) => {
         type: WALLET_ACTIONS.SET_CONNECTED,
         payload: walletData,
       });
+      
+      // Load dashboard data for the connected wallet
+      await loadDashboardData(walletData.address);
     } catch (error) {
       let errorMessage = 'Failed to connect wallet';
       
@@ -250,6 +391,9 @@ export const WalletProvider = ({ children }) => {
             type: WALLET_ACTIONS.SET_CONNECTED,
             payload: account,
           });
+          
+          // Load dashboard data for the existing connected wallet
+          await loadDashboardData(account.address);
         }
       } catch (error) {
         console.error('Error checking existing connection:', error);
@@ -258,6 +402,56 @@ export const WalletProvider = ({ children }) => {
 
     checkConnection();
   }, []);
+
+  // Refresh dashboard data if wallet is connected (useful for page refreshes)
+  const refreshDashboardData = useCallback(async (forceRefresh = false) => {
+    console.log('📱 refreshDashboardData called:', {
+      isConnected: state.isConnected,
+      account: state.account,
+      forceRefresh,
+      hasLoadedThisSession: state.hasLoadedDashboardThisSession
+    });
+
+    if (state.isConnected && state.account) {
+      // If data has already been loaded this session and not forcing refresh, skip
+      if (state.hasLoadedDashboardThisSession && !forceRefresh) {
+        console.log('⏭️ Dashboard data already loaded this session, skipping refresh...');
+        return;
+      }
+
+      // Check rate limiting unless forcing refresh
+      if (!forceRefresh && !canMakeDashboardRequest()) {
+        const remainingTime = Math.ceil(getRemainingRateLimitTime() / 1000);
+        console.log(`⏳ Dashboard refresh rate limited. Wait ${remainingTime} seconds before next request.`);
+        return;
+      }
+      
+      console.log('🔄 Refreshing dashboard data for connected wallet');
+      await loadDashboardData(state.account, forceRefresh);
+    } else {
+      console.log('❌ Cannot refresh dashboard data: wallet not connected or no account');
+    }
+  }, [state.isConnected, state.account, state.hasLoadedDashboardThisSession, loadDashboardData]);
+
+  // Reset the session flag to allow data loading again
+  const resetDashboardSessionFlag = () => {
+    dispatch({
+      type: WALLET_ACTIONS.SET_DASHBOARD_LOADED_THIS_SESSION,
+      payload: false,
+    });
+  };
+
+  // Get request statistics for debugging
+  const getDashboardRequestStats = () => {
+    return {
+      totalRequests: requestCounter,
+      hasLoadedThisSession: state.hasLoadedDashboardThisSession,
+      lastRequestTime: state.lastDashboardRequestTime,
+      canMakeRequest: canMakeDashboardRequest(),
+      remainingRateLimitMs: getRemainingRateLimitTime(),
+      requestInProgress: dashboardRequestInProgress
+    };
+  };
 
   // Listen to account changes
   useEffect(() => {
@@ -270,10 +464,19 @@ export const WalletProvider = ({ children }) => {
         try {
           const account = await getCurrentAccount();
           if (account) {
+            // Reset session flag when account changes to allow loading new account data
+            dispatch({
+              type: WALLET_ACTIONS.SET_DASHBOARD_LOADED_THIS_SESSION,
+              payload: false,
+            });
+            
             dispatch({
               type: WALLET_ACTIONS.SET_CONNECTED,
               payload: account,
             });
+            
+            // Load dashboard data for the new account (force refresh for account changes)
+            await loadDashboardData(account.address, true);
           }
         } catch (error) {
           console.error('Error handling account change:', error);
@@ -302,6 +505,12 @@ export const WalletProvider = ({ children }) => {
     disconnect,
     forceDisconnect,
     clearError,
+    loadDashboardData,
+    refreshDashboardData,
+    resetDashboardSessionFlag,
+    canMakeDashboardRequest,
+    getRemainingRateLimitTime,
+    getDashboardRequestStats,
     getManualDisconnectInstructions,
   };
 

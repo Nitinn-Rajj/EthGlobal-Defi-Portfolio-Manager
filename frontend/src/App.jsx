@@ -7,12 +7,58 @@ import ScrollIndicator from './components/ScrollIndicator/ScrollIndicator'
 import TextType from './components/textanimation/index'
 import ChatPanel from './components/ChatPanel/ChatPanel'
 import FloatingChatButton from './components/FloatingChatButton/FloatingChatButton'
-import { WalletProvider } from './contexts/WalletContext'
+import { WalletProvider, useWallet } from './contexts/WalletContext'
 import { ChatProvider, useChat } from './contexts/ChatContext'
+import { useEffect, useRef } from 'react'
 
 // Inner App component to use chat context
 const AppContent = () => {
   const { isChatOpen } = useChat();
+  const { refreshDashboardData, isConnected, hasLoadedDashboardThisSession, getDashboardRequestStats } = useWallet();
+  const refreshFunctionRef = useRef(refreshDashboardData);
+
+  // Keep the ref updated
+  useEffect(() => {
+    refreshFunctionRef.current = refreshDashboardData;
+  }, [refreshDashboardData]);
+
+  // Load dashboard data when app component mounts (page load/refresh) - only if not already loaded
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDashboardOnPageLoad = async () => {
+      console.log('🏠 App useEffect triggered:', {
+        isConnected,
+        hasLoadedDashboardThisSession,
+        isMounted
+      });
+
+      if (isMounted && isConnected && !hasLoadedDashboardThisSession) {
+        console.log('🚀 App loaded - loading dashboard data for first time this session');
+        // Force refresh on page load to get latest data
+        await refreshFunctionRef.current(true);
+      } else {
+        console.log('⏭️ App useEffect skipped:', {
+          mounted: isMounted,
+          connected: isConnected,
+          alreadyLoaded: hasLoadedDashboardThisSession
+        });
+      }
+
+      // Log request statistics
+      if (getDashboardRequestStats) {
+        console.log('📊 Dashboard request stats:', getDashboardRequestStats());
+      }
+    };
+
+    // Small delay to ensure wallet connection check is complete
+    const timer = setTimeout(loadDashboardOnPageLoad, 1000);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [isConnected, hasLoadedDashboardThisSession]); // Removed refreshDashboardData from deps
 
   return (
     <div className={`app ${isChatOpen ? 'app--chat-open' : ''}`}>

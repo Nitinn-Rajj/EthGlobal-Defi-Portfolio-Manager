@@ -4,7 +4,7 @@
 **Base URL:** `http://127.0.0.1:8001`
 
 ### POST `/chat`
-Main cryptocurrency query endpoint with 4 different response types.
+Main cryptocurrency query endpoint.
 
 **Input:**
 ```json
@@ -22,98 +22,17 @@ Main cryptocurrency query endpoint with 4 different response types.
 }
 ```
 
-## 4 Response Types
-
-The `text` field contains JSON with one of these 4 message types:
-
-### 1. Portfolio Details
-```json
-{
-  "message_type": "portfolio_details",
-  "content": {
-    "division": {
-      "Ethereum": {
-        "balance": "",
-        "usd_value": "",
-        "network": "main net", 
-        "tokens": [{
-          "symbol": "ETH",
-          "amount": "0.0047",
-          "usd_value": ""
-        }]
-      }
-    }
-  }
-}
-```
-
-### 2. Current Prices
-```json
-{
-  "message_type": "current_prices",
-  "content": {
-    "price_book": {
-      "BTC": {
-        "symbol": "BTC",
-        "price_usd": "109379.0",
-        "price_btc": "",
-        "24h_change": ""
-      }
-    }
-  }
-}
-```
-
-### 3. Swap/Trade
-```json
-{
-  "message_type": "swap",
-  "content": {
-    "taker_asset": "ETH",
-    "maker_asset": "USDC",
-    "taking_amount": "0.5",
-    "making_amount": "",
-    "exchange_rate": "",
-    "network": "",
-    "status": "",
-    "transaction_hash": null
-  }
-}
-```
-
-### 4. Plain Text (Fallback)
-```json
-{
-  "message_type": "plain_text",
-  "content": {
-    "text": "original query text"
-  }
-}
-```
+The `text` field contains the direct response from the cryptocurrency agent without JSON formatting.
 
 ## Dashboard Server API
 **Base URL:** `http://127.0.0.1:5000`
 
-### POST `/dashboard`
+### GET `/dashboard/<wallet_address>`
 Get comprehensive dashboard data for a wallet address.
 
-**Input:**
-```json
-{
-  "text": "wallet_address"
-}
-```
+**Input:** Wallet address in URL path
 
-**Output:**
-```json
-{
-  "text": "{...comprehensive_dashboard_json...}",
-  "agent_address": "dashboard_server",
-  "timestamp": "integer"
-}
-```
-
-**Dashboard JSON Structure (inside `text` field):**
+**Output:** Direct JSON with dashboard data
 ```json
 {
   "wallet_address": "0x123...",
@@ -136,14 +55,12 @@ Get comprehensive dashboard data for a wallet address.
 ## Example Usage
 
 ```bash
-# Chat query
+# Chat query - returns plain text response
 curl -X POST http://127.0.0.1:8001/chat \
   -H "Content-Type: application/json" \
   -d '{"text": "What is Bitcoin price?"}'
 
-# Dashboard data
-curl -X POST http://127.0.0.1:5000/dashboard \
-  -H "Content-Type: application/json" \
-  -d '{"text": "0x742d35Cc6C8F2B2E9E5B2F2F4F6F2F2F2F2F2F2F"}'
+# Dashboard data - simple GET request
+curl http://127.0.0.1:5000/dashboard/0x742d35Cc6C8F2B2E9E5B2F2F4F6F2F2F2F2F2F2F
 ```
 

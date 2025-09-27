@@ -33,14 +33,6 @@ export const API_CONFIG = {
   }
 };
 
-// Message types returned by chat API
-export const CHAT_MESSAGE_TYPES = {
-  PORTFOLIO_DETAILS: 'portfolio_details',
-  CURRENT_PRICES: 'current_prices',
-  SWAP: 'swap',
-  PLAIN_TEXT: 'plain_text'
-};
-
 // Environment-based configuration
 export const getApiConfig = () => {
   const env = process.env.NODE_ENV || 'development';
