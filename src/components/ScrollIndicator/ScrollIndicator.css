@@ -1,0 +1,105 @@
+.scroll-indicator {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  padding: 12px 24px;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: bounce 2s infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-indicator:hover {
+  transform: translateX(-50%) translateY(-4px);
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.scroll-indicator__text {
+  white-space: nowrap;
+}
+
+.scroll-indicator__arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: -2px;
+}
+
+.scroll-indicator__chevron {
+  width: 10px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.6);
+  transform: rotate(45deg);
+  margin-bottom: -1px;
+}
+
+.scroll-indicator__chevron:nth-child(2) {
+  transform: rotate(45deg) scale(1.1);
+  background: rgba(255, 255, 255, 0.8);
+  animation: chevronPulse 1.5s ease-in-out infinite;
+  animation-delay: 0.1s;
+}
+
+.scroll-indicator__chevron:nth-child(3) {
+  transform: rotate(45deg) scale(0.9);
+  animation: chevronPulse 1.5s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-8px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-4px);
+  }
+}
+
+@keyframes chevronPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .scroll-indicator {
+    bottom: 30px;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroll-indicator {
+    bottom: 25px;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+  }
+
+  .scroll-indicator__text {
+    font-size: 0.8rem;
+  }
+}

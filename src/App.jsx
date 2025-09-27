@@ -2,11 +2,15 @@ import './App.css'
 import Header from './components/Header/Header'
 import Footer from './components/Footer/Footer'
 import LiquidEther from './components/Background'
+import Dashboard from './components/Dashboard/Dashboard'
+import ScrollIndicator from './components/ScrollIndicator/ScrollIndicator'
+import { WalletProvider } from './contexts/WalletContext'
 
 function App() {
   return (
+    <WalletProvider>
     <div className="app">
-      <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 2 }}>
+      <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 0 }}>
         <LiquidEther
           colors={[ '#5227FF', '#FF9FFC', '#B19EEF' ]}
           mouseForce={20}
@@ -33,9 +37,12 @@ function App() {
             Leverage AI-powered agents to optimize your DeFi investments with intelligent rebalancing and risk management.
           </p>
         </div>
+        <Dashboard />
       </main>
       <Footer />
+      <ScrollIndicator />
     </div>
+    </WalletProvider>
   )
 }
 
