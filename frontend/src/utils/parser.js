@@ -1,12 +1,16 @@
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../../agents/.env') }); // Load environment variables from agents/.env file
-
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // --- Google AI Setup ---
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+console.log('🔑 API Key loaded:', API_KEY ? 'Yes' : 'No', API_KEY?.substring(0, 10) + '...');
+
+if (!API_KEY) {
+    console.error('❌ VITE_GOOGLE_API_KEY not found in environment variables');
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash-lite",
     generationConfig: {
         responseMimeType: "application/json", // This is crucial for forcing JSON output
     },
@@ -55,8 +59,15 @@ const processText = async (inputText) => {
         }
 
         console.log("🚀 Processing text:", inputText);
+        console.log("🤖 Model initialized:", !!model);
+
+        if (!API_KEY) {
+            throw new Error('Google API key is missing');
+        }
 
         const prompt = getPrompt(inputText);
+        console.log("📝 Prompt sent to AI:", prompt.substring(0, 200) + '...');
+        
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
 
@@ -69,9 +80,14 @@ const processText = async (inputText) => {
 
     } catch (error) {
         console.error("🔥 Error processing request:", error);
-        throw new Error('Failed to process text with AI model.');
+        console.error("🔥 Full error details:", {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        throw new Error(`Failed to process text with AI model: ${error.message}`);
     }
 };
 
 // Export the function for use in other components
-module.exports = { processText };
+export { processText };

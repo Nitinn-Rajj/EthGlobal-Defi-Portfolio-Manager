@@ -7,6 +7,7 @@ import ScrollIndicator from './components/ScrollIndicator/ScrollIndicator'
 import TextType from './components/textanimation/index'
 import ChatPanel from './components/ChatPanel/ChatPanel'
 import FloatingChatButton from './components/FloatingChatButton/FloatingChatButton'
+import DebugInfo from './components/DebugInfo'
 import { WalletProvider, useWallet } from './contexts/WalletContext'
 import { ChatProvider, useChat } from './contexts/ChatContext'
 import { useEffect, useRef } from 'react'
@@ -104,6 +105,7 @@ const AppContent = () => {
       <ScrollIndicator />
       <ChatPanel />
       <FloatingChatButton />
+      {/* <DebugInfo /> */}
     </div>
   );
 };

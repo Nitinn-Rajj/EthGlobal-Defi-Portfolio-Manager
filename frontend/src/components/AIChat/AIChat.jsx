@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import SwapConfirmation from './SwapConfirmation';
+import { processText } from '../../utils/parser';
+import { testParser } from '../../utils/testParser';
 import './AIChat.css';
 
 const AIChat = () => {
@@ -56,6 +58,12 @@ const AIChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Test parser on component mount
+  useEffect(() => {
+    console.log('🚀 AIChat component mounted, testing parser...');
+    testParser();
+  }, []);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -193,6 +201,24 @@ const AIChat = () => {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    
+    // Process the user message with our parser
+    console.log('💬 User message received:', content);
+    try {
+      console.log('🎯 Starting parser...');
+      const parsedResult = await processText(content);
+      console.log('🎯 Parser Output:', parsedResult);
+      
+      // You can use the parsed result here for different actions
+      // For now, we'll continue with the existing mock response
+    } catch (error) {
+      console.error('❌ Parser Error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
     await sendMessageToAI(content);
   };
 
