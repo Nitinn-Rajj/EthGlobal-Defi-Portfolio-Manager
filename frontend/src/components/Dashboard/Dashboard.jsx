@@ -1,23 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 import { formatBalance } from '../../utils/wallet';
+import SwapModal from '../SwapModal/SwapModal';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const { 
-    isConnected, 
-    account, 
-    balance, 
-    network, 
-    connect,
-    disconnect,
-    isConnecting,
-    error,
-    clearError
-  } = useWallet();
-
-  const [scrollY, setScrollY] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
+    const { 
+        isConnected, 
+        account, 
+        balance, 
+        usdValue, 
+        tokenPrices, 
+        portfolioData, 
+        loading, 
+        error,
+        clearError,
+        connect,
+        disconnect,
+        isConnecting,
+        network
+    } = useWallet();
+    
+    const [activeTab, setActiveTab] = useState('overview');
+    const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+    const [scrollY, setScrollY] = useState(0);
+    const [isVisible, setIsVisible] = useState(true);
+    
+    // Sample tokens data - you may want to move this to context or fetch from API
+    const tokens = [
+        {
+            symbol: 'ETH',
+            name: 'Ethereum',
+            balance: 2.5,
+            value: 5000,
+            icon: '/icons/eth.png'
+        },
+        {
+            symbol: 'USDT',
+            name: 'Tether USD',
+            balance: 1250,
+            value: 1250,
+            icon: '/icons/usdt.png'
+        }
+    ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -215,7 +240,10 @@ const Dashboard = () => {
                   <span className="dashboard__action-icon">📥</span>
                   Receive
                 </button>
-                <button className="dashboard__action-btn dashboard__action-btn--swap">
+                <button 
+                  className="dashboard__action-btn dashboard__action-btn--swap"
+                  onClick={() => setIsSwapModalOpen(true)}
+                >
                   <span className="dashboard__action-icon">🔄</span>
                   Swap
                 </button>
@@ -253,6 +281,15 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      
+      {/* Swap Modal */}
+      {isSwapModalOpen && (
+        <SwapModal
+          isOpen={isSwapModalOpen}
+          onClose={() => setIsSwapModalOpen(false)}
+          tokens={tokens}
+        />
+      )}
     </section>
   );
 };
