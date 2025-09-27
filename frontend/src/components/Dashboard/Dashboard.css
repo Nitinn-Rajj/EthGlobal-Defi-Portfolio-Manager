@@ -475,6 +475,16 @@
   transform: translateY(-2px);
 }
 
+.dashboard__action-btn--limit-order {
+  background-color: rgba(125, 18, 255, 0.1);
+  border-color: rgba(125, 18, 255, 0.3);
+}
+
+.dashboard__action-btn--limit-order:hover {
+  background-color: rgba(125, 18, 255, 0.2);
+  border-color: rgba(125, 18, 255, 0.4);
+}
+
 .dashboard__action-icon {
   font-size: 1.5rem;
 }

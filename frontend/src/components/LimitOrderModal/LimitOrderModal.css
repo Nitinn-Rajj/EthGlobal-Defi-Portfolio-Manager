@@ -1,0 +1,135 @@
+/* Import all styling from SwapModal for consistency */
+@import '../SwapModal/SwapModal.css';
+
+/* Additional styles specific to LimitOrderModal */
+
+/* Make the modal wider to avoid scrolling */
+.limit-order-modal {
+  width: 100%;
+  max-width: 560px; /* Wider than the default 480px */
+}
+
+/* Adjust the height of the content */
+.limit-order-modal .swap-step {
+  min-height: auto; /* Remove fixed height */
+  padding-bottom: 10px; /* Add some padding at the bottom */
+}
+
+/* Price Display section */
+.price-display {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Make content more compact */
+.limit-order-modal .swap-section {
+  margin-bottom: 12px; /* Reduced from 16px */
+}
+
+.limit-order-modal .swap-input-group {
+  padding: 2px; /* Added to make inputs more compact */
+}
+
+.limit-order-modal .swap-settings {
+  margin-top: 12px; /* Reduced from 20px */
+  padding: 12px; /* Reduced from 16px */
+}
+
+.price-ratio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: var(--color-text, #ffffff);
+}
+
+.price-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--color-text, #ffffff);
+  padding: 8px 12px;
+  width: 100px;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.price-input:focus {
+  outline: none;
+  border-color: rgba(125, 18, 255, 0.4);
+}
+
+.market-price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.price-difference {
+  font-weight: 600;
+}
+
+.price-difference.positive {
+  color: #00b876;
+}
+
+.price-difference.negative {
+  color: #ff5252;
+}
+
+/* Expiry Options */
+.expiry-options {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.expiry-btn {
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+  flex: 1;
+  text-align: center;
+}
+
+.expiry-btn.active,
+.expiry-btn:hover {
+  background: rgba(125, 18, 255, 0.2);
+  border-color: rgba(125, 18, 255, 0.4);
+  color: var(--color-text, #ffffff);
+}
+
+/* Review styles */
+.review-item .positive {
+  color: #00b876;
+}
+
+.review-item .negative {
+  color: #ff5252;
+}
+
+/* Make sure inputs and selectors have proper width */
+@media (max-width: 480px) {
+  .price-ratio {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .price-input {
+    width: 80px;
+  }
+}

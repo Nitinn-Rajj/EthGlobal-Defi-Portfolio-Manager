@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 import { formatBalance } from '../../utils/wallet';
 import SwapModal from '../SwapModal/SwapModal';
+import LimitOrderModal from '../LimitOrderModal/LimitOrderModal';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -23,6 +24,7 @@ const Dashboard = () => {
     
     const [activeTab, setActiveTab] = useState('overview');
     const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+    const [isLimitOrderModalOpen, setIsLimitOrderModalOpen] = useState(false);
     const [scrollY, setScrollY] = useState(0);
     const [isVisible, setIsVisible] = useState(true);
     
@@ -247,9 +249,12 @@ const Dashboard = () => {
                   <span className="dashboard__action-icon">🔄</span>
                   Swap
                 </button>
-                <button className="dashboard__action-btn dashboard__action-btn--stake">
-                  <span className="dashboard__action-icon">🏦</span>
-                  Stake
+                <button 
+                  className="dashboard__action-btn dashboard__action-btn--limit-order"
+                  onClick={() => setIsLimitOrderModalOpen(true)}
+                >
+                  <span className="dashboard__action-icon">📊</span>
+                  Limit Order
                 </button>
               </div>
             </div>
@@ -288,6 +293,14 @@ const Dashboard = () => {
           isOpen={isSwapModalOpen}
           onClose={() => setIsSwapModalOpen(false)}
           tokens={tokens}
+        />
+      )}
+      
+      {/* Limit Order Modal */}
+      {isLimitOrderModalOpen && (
+        <LimitOrderModal
+          isOpen={isLimitOrderModalOpen}
+          onClose={() => setIsLimitOrderModalOpen(false)}
         />
       )}
     </section>
