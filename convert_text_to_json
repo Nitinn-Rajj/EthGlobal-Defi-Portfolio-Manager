@@ -1,0 +1,187 @@
+import os
+import json
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+# --- Configuration ---
+# It's best to set your API key as an environment variable
+# for security reasons.
+# Example: export GOOGLE_API_KEY="YOUR_API_KEY"
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+
+
+# --- Define Your JSON Structures as Tools for the Model ---
+
+# Tool for: 2. Portfolio Details
+get_portfolio_details = {
+    "name": "get_portfolio_details",
+    "description": "Responds with user's portfolio balance and token division when asked about their holdings, balance, or portfolio.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "division": {
+                "type": "string",
+                "description": "The specific division or cryptocurrency to get details for, e.g., 'Ethereum' or 'BTC'. If not specified, returns the whole portfolio.",
+            }
+        },
+    },
+}
+
+# Tool for: 3. Current Prices
+get_current_prices = {
+    "name": "get_current_prices",
+    "description": "Gets the current market price of one or more specified cryptocurrencies.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "symbols": {
+                "type": "array",
+                "description": "A list of cryptocurrency symbols to fetch the price for, e.g., ['ETH', 'BTC'].",
+                "items": {"type": "string"},
+            }
+        },
+        "required": ["symbols"],
+    },
+}
+
+# Tool for: 4. Market Trend
+get_market_trend = {
+    "name": "get_market_trend",
+    "description": "Provides a summary of recent market trends, top gainers/losers, and notable events.",
+    "parameters": {"type": "object", "properties": {}},
+}
+
+# Tool for: 5. Swap
+create_swap_json = {
+    "name": "create_swap_json",
+    "description": "Creates a JSON object for a cryptocurrency swap or trade transaction.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "taker_asset": {
+                "type": "string",
+                "description": "The asset symbol the user is giving or selling. e.g., 'BTC', 'ETH'.",
+            },
+            "maker_asset": {
+                "type": "string",
+                "description": "The asset symbol the user is receiving or buying. e.g., 'USDC', 'ETH'.",
+            },
+            "taking_amount": {
+                "type": "number",
+                "description": "The amount of the taker_asset to be swapped.",
+            },
+        },
+        "required": ["taker_asset", "maker_asset", "taking_amount"],
+    },
+}
+
+
+# --- Main Processing Logic ---
+
+def process_text_to_json(text: str) -> str:
+    # Note: In a real application, this data would come from a live API.
+    # These are placeholders to construct the full JSON as per your examples.
+    live_data_placeholders = {
+        "eth_price": 3000,
+        "btc_price": 27000,
+        "portfolio": {
+            "Ethereum": {
+                "balance": "2.5", "usd_value": "7500", "network": "Ethereum Mainnet",
+                "tokens": [{"symbol": "ETH", "amount": "2.0", "usd_value": "6000"}, {"symbol": "USDC", "amount": "1500", "usd_value": "1500"}]
+            },
+            "BTC": {"balance": "0.12", "usd_value": "3200", "network": "Bitcoin Mainnet"}
+        }
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash-latest",
+        tools=[get_portfolio_details, get_current_prices, get_market_trend, create_swap_json],
+    )
+
+    chat = model.start_chat()
+    response = chat.send_message(
+        text,
+        safety_settings={ # Optional: Adjust safety settings
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+    )
+    
+    final_json = {}
+
+    try:
+        function_call = response.candidates[0].content.parts[0].function_call
+        function_name = function_call.name
+        model_args = function_call.args
+
+        if function_name == "create_swap_json":
+            taker = model_args["taker_asset"].upper()
+            maker = model_args["maker_asset"].upper()
+            amount = model_args["taking_amount"]
+            # Placeholder for exchange rate calculation
+            making_amount = amount * live_data_placeholders['eth_price'] if taker == "ETH" else amount * (live_data_placeholders['btc_price'] / live_data_placeholders['eth_price'])
+
+            final_json = {
+                "message_type": "swap",
+                "content": {
+                    "taker_asset": taker,
+                    "maker_asset": maker,
+                    "taking_amount": str(amount),
+                    "making_amount": str(round(making_amount, 2)),
+                    "exchange_rate": f"1 {taker} = {making_amount/amount:.2f} {maker}",
+                    "network": "Ethereum Mainnet",
+                    "status": "pending",
+                    "transaction_hash": None,
+                },
+            }
+
+        elif function_name == "get_portfolio_details":
+            final_json = {
+                "message_type": "portfolio_details",
+                "content": {"division": live_data_placeholders["portfolio"]},
+            }
+
+        elif function_name == "get_current_prices":
+            symbols_to_get = [s.upper() for s in model_args["symbols"]]
+            price_book = {}
+            if "ETH" in symbols_to_get:
+                price_book["ETH"] = {"symbol": "ETH", "price_usd": "3000", "price_btc": "0.06", "24h_change": "-2.1%"}
+            if "BTC" in symbols_to_get:
+                price_book["BTC"] = {"symbol": "BTC", "price_usd": "27000", "price_eth": "16.5", "24h_change": "+0.8%"}
+            
+            final_json = {
+                "message_type": "current_prices",
+                "content": {"price_book": price_book},
+            }
+        
+        elif function_name == "get_market_trend":
+            # This would be fetched from a data source
+            final_json = {"message_type": "market_trend", "content": {"weekly_agenda": {}}}
+
+
+    except (AttributeError, IndexError):
+        # This is the fallback if no function was called
+        final_json = {
+            "message_type": "plain_text",
+            "content": {"text": text}, # Or you could pass the model's text response here
+        }
+
+    return json.dumps(final_json, indent=2)
+
+
+# --- Example Usage ---
+if __name__ == "__main__":
+    queries = [
+        "swap 1.5 ETH for USDC",
+        "Can you convert 0.005 btc to eth for me",
+        "what's the current price of bitcoin and ethereum?",
+        "how is the market doing",
+        "Show me my portfolio balance",
+        "hello, how are you today?",
+        "what is 2+2?",
+    ]
+
+    for q in queries:
+        print(f"--- Query: '{q}' ---")
+        json_output = process_text_to_json(q)
+        print(json_output)
+        print("\n")
