@@ -22,7 +22,6 @@ You are an expert financial assistant API. Your job is to analyze user text and 
 
 You must categorize the user's intent into one of the following types:
 - "portfolio_summary"
-- "coin_summary"
 - "limit_order"
 - "swap"
 - "other"
@@ -34,16 +33,13 @@ Based on the type, you will extract the required information. The final output m
 1.  If the type is "portfolio_summary":
     { "type": "portfolio_summary" }
 
-2.  If the type is "coin_summary":
-    { "type": "coin_summary", "data": { "coin_symbol": "SYMBOL" } }
-
-3.  If the type is "limit_order":
+2.  If the type is "limit_order":
     { "type": "limit_order", "data": { "maker_coin": "SYMBOL", "taker_coin": "SYMBOL", "making_amount": 0.0, "taking_amount": 0.0, "expiry_time_hours": 24 } }
 
-4.  If the type is "swap":
+3.  If the type is "swap":
     { "type": "swap", "data": { "initial_coin": "SYMBOL", "target_coin": "SYMBOL", "amount": 0.0, "slippage_percentage": null } }
 
-5.  If the type is "other":
+4.  If the type is "other":
     { "type": "other" }
 
 ### User Request ###

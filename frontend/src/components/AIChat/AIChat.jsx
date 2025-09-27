@@ -3,10 +3,14 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import SwapConfirmation from './SwapConfirmation';
 import { processText } from '../../utils/parser';
-import { testParser } from '../../utils/testParser';
+import { getChatResponse } from '../../apiservices/chatService';
+import { getTotalBalanceUSD, getPortfolioData } from '../../apiservices/dashboardService';
+import { useWallet } from '../../contexts/WalletContext';
 import './AIChat.css';
 
 const AIChat = () => {
+  const { dashboardData, account, balance, network } = useWallet();
+  
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -59,12 +63,6 @@ const AIChat = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Test parser on component mount
-  useEffect(() => {
-    console.log('🚀 AIChat component mounted, testing parser...');
-    testParser();
-  }, []);
-
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (container) {
@@ -73,35 +71,126 @@ const AIChat = () => {
     }
   }, []);
 
-  // Mock API call - replace with your actual backend integration
+  // Helper function to create portfolio data from wallet context
+  const createPortfolioData = () => {
+    if (!dashboardData) {
+      return {
+        type: 'portfolio',
+        totalValue: balance || '0 ETH',
+        assets: []
+      };
+    }
+
+    console.log('📊 Creating portfolio data from:', dashboardData);
+
+    // Get total balance using dashboard service helper
+    const totalBalanceUSD = getTotalBalanceUSD(dashboardData);
+    const portfolioData = getPortfolioData(dashboardData);
+    
+    console.log('💰 Total Balance USD:', totalBalanceUSD);
+    console.log('📈 Portfolio Data:', portfolioData);
+
+    // Try to extract asset data from various possible locations
+    let assets = [];
+    
+    // Check if there's a holdings array in portfolio
+    if (portfolioData?.holdings && Array.isArray(portfolioData.holdings)) {
+      assets = portfolioData.holdings.map((holding, index) => ({
+        token: holding.symbol || holding.token || `Asset ${index + 1}`,
+        amount: holding.balance || holding.amount || '0',
+        value: holding.value_usd || holding.usd_value || '$0',
+        allocation: holding.allocation || `${Math.round((parseFloat(holding.value_usd || 0) / parseFloat(totalBalanceUSD || 1)) * 100)}%`
+      }));
+    }
+    // Check if there's a tokens array
+    else if (dashboardData.tokens && Array.isArray(dashboardData.tokens)) {
+      assets = dashboardData.tokens.map((token, index) => ({
+        token: token.symbol || token.name || `Token ${index + 1}`,
+        amount: token.balance || token.amount || '0',
+        value: token.value_usd || token.usd_value || '$0',
+        allocation: token.allocation || `${Math.round((parseFloat(token.value_usd || 0) / parseFloat(totalBalanceUSD || 1)) * 100)}%`
+      }));
+    }
+    // Fallback: show account balance as ETH
+    else if (balance) {
+      assets = [{
+        token: 'ETH',
+        amount: balance,
+        value: totalBalanceUSD ? `$${totalBalanceUSD}` : 'N/A',
+        allocation: '100%'
+      }];
+    }
+
+    return {
+      type: 'portfolio',
+      totalValue: totalBalanceUSD ? `$${totalBalanceUSD}` : (balance ? `${balance} ETH` : '$0'),
+      assets: assets
+    };
+  };
+
+  // Main function to send message to AI and handle responses
   const sendMessageToAI = async (userMessage) => {
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('💬 Sending message to chat service:', userMessage);
+      console.log('🔍 Wallet context:', { account, balance, network });
+      console.log('📊 Dashboard data:', dashboardData);
       
-      // Mock response based on message content
-      const response = generateMockResponse(userMessage);
+      // Prepare wallet context for the chat service
+      const walletContext = {
+        account,
+        balance,
+        network,
+        isConnected: !!account
+      };
       
-      const aiMessage = {
+      // Step 1: Get response from chat service (backend agents) with context
+      const chatResponse = await getChatResponse(userMessage, walletContext, dashboardData);
+      console.log('✅ Chat service response:', chatResponse);
+      
+      // Step 2: Parse the response using the parser
+      const parsedResult = await processText(chatResponse);
+      console.log('🎯 Parser result:', parsedResult);
+      
+      // Step 3: Create appropriate AI message based on parsed type
+      let aiMessage = {
         id: Date.now(),
         type: 'ai',
-        ...response,
         timestamp: Date.now()
       };
+
+      switch (parsedResult.type) {
+        case 'portfolio_summary':
+          aiMessage.content = 'Here\'s your current portfolio analysis:';
+          aiMessage.structuredData = createPortfolioData();
+          break;
+          
+        case 'other':
+          aiMessage.content = chatResponse; // Use the original chat response
+          break;
+          
+        case 'swap':
+          // For now, just show the response text - we'll handle swap modal later
+          aiMessage.content = chatResponse;
+          console.log('🔄 Swap request detected:', parsedResult.data);
+          break;
+          
+        case 'limit_order':
+          // For now, just show the response text - we'll handle limit orders later
+          aiMessage.content = chatResponse;
+          console.log('📋 Limit order detected:', parsedResult.data);
+          break;
+          
+        default:
+          aiMessage.content = chatResponse;
+      }
       
       setMessages(prev => [...prev, aiMessage]);
       
-      // If the response contains a swap proposal, set it as pending
-      if (response.swapProposal) {
-        setPendingSwap({
-          messageId: aiMessage.id,
-          proposal: response.swapProposal
-        });
-      }
-      
     } catch (error) {
+      console.error('❌ Error in sendMessageToAI:', error);
+      
       const errorMessage = {
         id: Date.now(),
         type: 'ai',
@@ -115,83 +204,6 @@ const AIChat = () => {
     }
   };
 
-  const generateMockResponse = (userMessage) => {
-    const message = userMessage.toLowerCase();
-    
-    // Detect swap requests
-    if (message.includes('swap') || message.includes('exchange')) {
-      return {
-        content: 'I can help you with that swap. Let me analyze the best route and get you a quote.',
-        reasoning: [
-          {
-            step: 'Analyzing swap request',
-            content: 'Detecting tokens: BTC → ETH'
-          },
-          {
-            step: 'Fetching liquidity pools',
-            content: 'Checking Uniswap V3, 1inch, and Curve pools'
-          },
-          {
-            step: 'Calculating optimal route',
-            content: 'Best route found via Uniswap V3 with 0.05% fee tier'
-          }
-        ],
-        swapProposal: {
-          fromToken: 'BTC',
-          toToken: 'ETH',
-          amount: '0.1',
-          estimatedReceive: '2.847',
-          route: 'Uniswap V3 → 1inch',
-          priceImpact: '0.12%',
-          networkFee: '~$15',
-          slippage: '0.5%',
-          riskLevel: 'Low'
-        }
-      };
-    }
-    
-    // Portfolio analysis
-    if (message.includes('portfolio') || message.includes('balance')) {
-      return {
-        content: 'Here\'s your current portfolio analysis:',
-        reasoning: [
-          {
-            step: 'Fetching wallet balances',
-            content: 'Connected to wallet: 0x1234...5678'
-          },
-          {
-            step: 'Analyzing asset allocation',
-            content: 'Current allocation: 60% ETH, 25% BTC, 15% Stablecoins'
-          }
-        ],
-        structuredData: {
-          type: 'portfolio',
-          totalValue: '$12,847.32',
-          assets: [
-            { token: 'ETH', amount: '5.2', value: '$7,708.32', allocation: '60%' },
-            { token: 'BTC', amount: '0.08', value: '$3,211.68', allocation: '25%' },
-            { token: 'USDC', amount: '1,927.32', value: '$1,927.32', allocation: '15%' }
-          ]
-        }
-      };
-    }
-    
-    // Default response
-    return {
-      content: 'I understand your request. How can I help you with your DeFi portfolio today?',
-      reasoning: [
-        {
-          step: 'Processing natural language',
-          content: 'Analyzing intent and extracting key parameters'
-        },
-        {
-          step: 'Checking available actions',
-          content: 'Available: Portfolio analysis, Token swaps, Yield farming recommendations'
-        }
-      ]
-    };
-  };
-
   const handleSendMessage = async (content) => {
     const userMessage = {
       id: Date.now(),
@@ -202,23 +214,7 @@ const AIChat = () => {
     
     setMessages(prev => [...prev, userMessage]);
     
-    // Process the user message with our parser
-    console.log('💬 User message received:', content);
-    try {
-      console.log('🎯 Starting parser...');
-      const parsedResult = await processText(content);
-      console.log('🎯 Parser Output:', parsedResult);
-      
-      // You can use the parsed result here for different actions
-      // For now, we'll continue with the existing mock response
-    } catch (error) {
-      console.error('❌ Parser Error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack
-      });
-    }
-    
+    // Send message to AI service
     await sendMessageToAI(content);
   };
 

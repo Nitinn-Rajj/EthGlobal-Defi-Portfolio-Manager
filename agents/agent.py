@@ -24,7 +24,7 @@ mcp_adapter = MCPServerAdapter(
 agent = Agent(
     name="wallet-market-fgi-agent",
     port=8000,
-    seed="ETH2",
+    seed="ETH",
     mailbox=True        # Enable mailbox functionality
 ) 
 

@@ -25,9 +25,6 @@ except ImportError as e:
 # Create a FastMCP server instance
 mcp = FastMCP("wallet-market-fgi")
 
-# Global session storage (in production, use Redis or database)
-user_sessions = {}
-
 # Initialize MeTTa Knowledge Graph (optional)
 knowledge_graph = None
 if METTA_AVAILABLE:
@@ -35,8 +32,6 @@ if METTA_AVAILABLE:
         knowledge_graph = DeFiKnowledgeGraph()
         if knowledge_graph.is_available():
             print("🧠 Knowledge Graph initialized with symbolic reasoning capabilities")
-            # Clean up any expired sessions on startup
-            knowledge_graph.cleanup_expired_sessions()
         else:
             print("⚠️  Knowledge Graph initialized in fallback mode (MeTTa not available)")
     except Exception as e:
@@ -48,92 +43,23 @@ def get_coin_name(symbol):
     coin_names = {
         'BTC': 'Bitcoin',
         'ETH': 'Ethereum', 
-        'SOL': 'Solana',
+        'USDC': 'USD Coin',
+        'USDT': 'Tether',
+        'DOGE': 'Dogecoin',
         'ADA': 'Cardano',
+        'SOL': 'Solana',
         'DOT': 'Polkadot',
-        'MATIC': 'Polygon',
         'AVAX': 'Avalanche',
-        'LINK': 'Chainlink',
-        'UNI': 'Uniswap',
-        'LTC': 'Litecoin'
+        'MATIC': 'Polygon'
     }
     return coin_names.get(symbol.upper(), symbol.upper())
 
 @mcp.tool()
-async def create_user_session(session_id: str, wallet_address: str, risk_profile: str = "moderate") -> str:
-    """Create a user session with wallet address. This should be called when user connects their wallet."""
+async def get_wallet_balance(wallet_address: str) -> str:
+    """Get ETH balance for a wallet address with USD equivalent."""
     try:
-        if not knowledge_graph or not knowledge_graph.is_available():
-            return "Knowledge Graph not available. Session management disabled."
-        
-        # Validate wallet address format
-        if not wallet_address.startswith('0x') or len(wallet_address) != 42:
-            return "Invalid wallet address format. Please provide a valid Ethereum address."
-        
-        # Create preferences
-        preferences = {
-            'risk_profile': risk_profile,
-            'created_via': 'wallet_connection'
-        }
-        
-        success = knowledge_graph.create_user_session(session_id, wallet_address, preferences)
-        
-        if success:
-            result = f"✅ User session created successfully!\n"
-            result += f"Session ID: {session_id}\n"
-            result += f"Wallet: {wallet_address}\n"
-            result += f"Risk Profile: {risk_profile}\n"
-            result += f"Now I can help you with portfolio analysis without asking for your wallet address repeatedly!"
-            return result
-        else:
-            return "❌ Failed to create user session. Please try again."
-            
-    except Exception as e:
-        return f"Error creating user session: {str(e)}"
-
-@mcp.tool()
-async def get_session_info(session_id: str) -> str:
-    """Get information about the current user session."""
-    try:
-        if not knowledge_graph or not knowledge_graph.is_available():
-            return "Knowledge Graph not available. Session management disabled."
-        
-        summary = knowledge_graph.get_session_summary(session_id)
-        
-        if not summary.get('session_active'):
-            return f"No active session found for ID: {session_id}. Please connect your wallet first."
-        
-        result = f"📊 Session Information:\n"
-        result += f"Session ID: {session_id}\n"
-        result += f"Wallet Address: {summary.get('wallet_address', 'Not found')}\n"
-        result += f"Risk Profile: {summary.get('preferences', {}).get('risk_profile', 'Not set')}\n"
-        result += f"Session Active: {summary.get('session_active', False)}\n"
-        result += f"Last Active: {summary.get('last_active', 'Unknown')}\n"
-        
-        cache_status = summary.get('cache_status', {})
-        result += f"\n💾 Cache Status:\n"
-        result += f"Cached Symbols: {len(cache_status.get('cached_symbols', []))}\n"
-        if cache_status.get('cached_symbols'):
-            result += f"Symbols: {', '.join(cache_status['cached_symbols'])}\n"
-        result += f"Cache Duration: {cache_status.get('cache_duration_minutes', 0)} minutes\n"
-        
-        return result
-        
-    except Exception as e:
-        return f"Error retrieving session info: {str(e)}"
-
-@mcp.tool()
-async def get_wallet_balance(wallet_address: str = None, session_id: str = None) -> str:
-    """Get ETH balance for a wallet address with USD equivalent. Can use session_id instead of wallet_address if user is already connected."""
-    try:
-        # Try to get wallet from session if not provided
-        if not wallet_address and session_id and knowledge_graph:
-            wallet_address = knowledge_graph.get_user_wallet(session_id)
-            if not wallet_address:
-                return "❌ No wallet address found in session. Please provide wallet_address or connect your wallet first using create_user_session."
-        
         if not wallet_address:
-            return "❌ Please provide either wallet_address or session_id with active session."
+            return "❌ Please provide a wallet_address."
             
         balance = await get_eth_balance(wallet_address)
         # Get transaction count for portfolio summary
@@ -176,9 +102,6 @@ async def get_wallet_balance(wallet_address: str = None, session_id: str = None)
             result += f"USD Equivalent: Unable to fetch current ETH price\n"
             
         result += f"Total Transactions: {transaction_count}\n"
-        
-        if session_id:
-            result += f"\n🔗 Retrieved using session: {session_id[:8]}...\n"
         
         return result
     except Exception as e:
@@ -394,17 +317,11 @@ async def get_fear_greed_history(days: int = 7) -> str:
         return f"Error fetching Fear & Greed Index history: {str(e)}. Please try again later."
 
 @mcp.tool()
-async def get_portfolio_summary(wallet_address: str = None, session_id: str = None) -> str:
-    """Get comprehensive portfolio summary with USD values and asset breakdown. Can use session_id instead of wallet_address if user is already connected."""
+async def get_portfolio_summary(wallet_address: str) -> str:
+    """Get comprehensive portfolio summary with USD values and asset breakdown."""
     try:
-        # Try to get wallet from session if not provided
-        if not wallet_address and session_id and knowledge_graph:
-            wallet_address = knowledge_graph.get_user_wallet(session_id)
-            if not wallet_address:
-                return "❌ No wallet address found in session. Please provide wallet_address or connect your wallet first using create_user_session."
-        
         if not wallet_address:
-            return "❌ Please provide either wallet_address or session_id with active session."
+            return "❌ Please provide a wallet_address."
             
         balance = await get_eth_balance(wallet_address)
         transactions = await get_transactions(wallet_address)
@@ -439,12 +356,7 @@ async def get_portfolio_summary(wallet_address: str = None, session_id: str = No
         
         result = f"📊 Portfolio Summary:\n"
         result += f"Wallet Address: {wallet_address}\n"
-        result += f"Network: Ethereum Mainnet\n"
-        
-        if session_id:
-            result += f"Session: {session_id[:8]}...\n"
-        
-        result += "\n"
+        result += f"Network: Ethereum Mainnet\n\n"
         
         # Total portfolio value
         if total_balance_usd is not None:
@@ -825,23 +737,6 @@ async def manage_cache(action: str = "status", symbol: str = None) -> str:
             
     except Exception as e:
         return f"Error managing cache: {str(e)}"
-
-@mcp.tool()
-async def cleanup_sessions(max_age_hours: int = 24) -> str:
-    """Cleanup expired user sessions and cache data. Default: remove sessions older than 24 hours."""
-    try:
-        if not knowledge_graph or not knowledge_graph.is_available():
-            return "Knowledge Graph not available. Session cleanup disabled."
-            
-        cleaned_count = knowledge_graph.cleanup_expired_sessions(max_age_hours)
-        
-        if cleaned_count > 0:
-            return f"🧹 Cleanup completed! Removed {cleaned_count} expired sessions and old cache entries."
-        else:
-            return f"✅ No expired sessions found. System is clean!"
-            
-    except Exception as e:
-        return f"Error during cleanup: {str(e)}"
 
 @mcp.tool()
 async def get_metta_knowledge_status() -> str:

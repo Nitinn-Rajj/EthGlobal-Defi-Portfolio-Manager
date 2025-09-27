@@ -31,12 +31,12 @@ class Response(Model):
 bridge_agent = Agent(
     name="bridge_agent",
     port=8001,
-    seed='random2',
+    seed='random',
     endpoint=["http://127.0.0.1:8001/submit"],
 )
 
 # Configuration
-MAIN_AGENT_ADDRESS = "agent1qfsg9he0m8ewz5sc66aupstvvu87hf5h57cdw0t9uekw6cw789smw2l64lf"  # Update this with your actual agent address
+MAIN_AGENT_ADDRESS = "agent1qddv4n7t4dp393655mgfa8y3vqdulesskf7vea9ydrq68f3mhqrdgv2sm78"  # Update this with your actual agent address
 
 # Global storage for pending requests and responses
 pending_requests: Dict[str, asyncio.Future] = {}
