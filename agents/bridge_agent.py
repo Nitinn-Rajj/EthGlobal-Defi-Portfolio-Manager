@@ -10,6 +10,14 @@ from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement
 )
 
+# Import the JSON conversion function
+try:
+    from convert_text_to_json import process_agent_response
+    JSON_CONVERSION_AVAILABLE = True
+except ImportError:
+    JSON_CONVERSION_AVAILABLE = False
+    print("Warning: convert_text_to_json module not available. Responses will be sent as plain text.")
+
 # REST API models (following the examples exactly)
 class Request(Model):
     text: str
@@ -81,8 +89,20 @@ async def chat_endpoint(ctx: Context, req: Request) -> Response:
             if msg_id_str in request_order:
                 request_order.remove(msg_id_str)
             
+            # Convert response to JSON format before sending to frontend
+            if JSON_CONVERSION_AVAILABLE:
+                try:
+                    json_response = process_agent_response(response_text)
+                    ctx.logger.info(f"Converted response to JSON format")
+                    final_response_text = json_response
+                except Exception as json_error:
+                    ctx.logger.warning(f"JSON conversion failed: {json_error}, sending original response")
+                    final_response_text = response_text
+            else:
+                final_response_text = response_text
+            
             return Response(
-                text=response_text,
+                text=final_response_text,
                 agent_address=ctx.agent.address,
                 timestamp=int(time.time())
             )
