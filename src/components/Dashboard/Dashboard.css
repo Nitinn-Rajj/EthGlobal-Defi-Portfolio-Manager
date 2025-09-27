@@ -81,6 +81,7 @@
   justify-content: center;
   gap: 8px;
   min-width: 160px;
+  margin: 0 auto;
 }
 
 .dashboard__connect-btn:hover:not(:disabled) {

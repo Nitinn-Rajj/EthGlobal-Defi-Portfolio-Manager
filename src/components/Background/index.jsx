@@ -140,20 +140,20 @@ export default function LiquidEther({
       }
       init(container) {
         this.container = container;
-        container.addEventListener('mousemove', this._onMouseMove, false);
+        document.addEventListener('mousemove', this._onMouseMove, false);
         container.addEventListener('touchstart', this._onTouchStart, false);
         container.addEventListener('touchmove', this._onTouchMove, false);
-        container.addEventListener('mouseenter', this._onMouseEnter, false);
-        container.addEventListener('mouseleave', this._onMouseLeave, false);
+        document.addEventListener('mouseenter', this._onMouseEnter, false);
+        document.addEventListener('mouseleave', this._onMouseLeave, false);
         container.addEventListener('touchend', this._onTouchEnd, false);
       }
       dispose() {
         if (!this.container) return;
-        this.container.removeEventListener('mousemove', this._onMouseMove, false);
+        document.removeEventListener('mousemove', this._onMouseMove, false);
         this.container.removeEventListener('touchstart', this._onTouchStart, false);
         this.container.removeEventListener('touchmove', this._onTouchMove, false);
-        this.container.removeEventListener('mouseenter', this._onMouseEnter, false);
-        this.container.removeEventListener('mouseleave', this._onMouseLeave, false);
+        document.removeEventListener('mouseenter', this._onMouseEnter, false);
+        document.removeEventListener('mouseleave', this._onMouseLeave, false);
         this.container.removeEventListener('touchend', this._onTouchEnd, false);
       }
       setCoords(x, y) {

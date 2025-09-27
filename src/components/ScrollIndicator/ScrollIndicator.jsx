@@ -20,11 +20,11 @@ const ScrollIndicator = () => {
   return (
     <button className="scroll-indicator" onClick={scrollToDashboard}>
       <div className="scroll-indicator__text">Scroll for Dashboard</div>
-      <div className="scroll-indicator__arrow">
+      {/* <div className="scroll-indicator__arrow">
         <div className="scroll-indicator__chevron"></div>
         <div className="scroll-indicator__chevron"></div>
         <div className="scroll-indicator__chevron"></div>
-      </div>
+      </div> */}
     </button>
   );
 };
