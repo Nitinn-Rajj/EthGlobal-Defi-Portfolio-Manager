@@ -1,0 +1,7 @@
+# MeTTa Knowledge Graph for DeFi Portfolio Management
+
+## Dependencies
+hyperon>=0.2.6
+
+## Optional for enhanced functionality  
+numpy>=1.21.0

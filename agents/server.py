@@ -1,12 +1,41 @@
 from typing import Any
 import os
+import sys
 from mcp.server.fastmcp import FastMCP
 from wallet_functions import get_eth_balance, get_transactions
 from market_functions import get_coin_price, get_coin_market_data, get_multiple_coin_prices
 from fgi_functions import get_fear_greed_index as fetch_fgi, get_fear_greed_history as fetch_fgi_history, interpret_fgi_value
+from correlation_functions import get_crypto_correlations, interpret_correlation
+
+# Add parent directory to path for metta_kg import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+# Try to import MeTTa Knowledge Graph (optional enhancement)
+try:
+    from metta_kg.knowledge_graph import DeFiKnowledgeGraph
+    from metta_kg.utils import format_risk_level, interpret_market_condition, format_portfolio_allocation
+    METTA_AVAILABLE = True
+    print("✅ MeTTa Knowledge Graph: ENABLED")
+except ImportError as e:
+    METTA_AVAILABLE = False
+    print(f"⚠️  MeTTa Knowledge Graph: DISABLED ({e})")
+    print("   Enhanced features not available. Install with: pip install hyperon")
 
 # Create a FastMCP server instance
 mcp = FastMCP("wallet-market-fgi")
+
+# Initialize MeTTa Knowledge Graph (optional)
+knowledge_graph = None
+if METTA_AVAILABLE:
+    try:
+        knowledge_graph = DeFiKnowledgeGraph()
+        if knowledge_graph.is_available():
+            print("🧠 Knowledge Graph initialized with symbolic reasoning capabilities")
+        else:
+            print("⚠️  Knowledge Graph initialized in fallback mode (MeTTa not available)")
+    except Exception as e:
+        print(f"⚠️  Failed to initialize Knowledge Graph: {e}")
+        METTA_AVAILABLE = False
 
 def get_coin_name(symbol):
     """Get human-readable name for cryptocurrency symbol."""
@@ -258,6 +287,384 @@ async def get_portfolio_summary(wallet_address: str) -> str:
     except Exception as e:
         return f"Error fetching portfolio summary: {str(e)}. Please check the address and try again."
 
+@mcp.tool()
+async def get_coin_correlations(symbols: str, days: int = 30) -> str:
+    """Get correlation analysis between cryptocurrencies over a specified time period. Provide symbols separated by commas (e.g., 'BTC,ETH,SOL')."""
+    try:
+        # Parse and validate input
+        if not symbols or not symbols.strip():
+            return "Error: Please provide at least one cryptocurrency symbol."
+        
+        symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
+        
+        if len(symbol_list) < 2:
+            return "Error: At least 2 cryptocurrency symbols are required for correlation analysis."
+        
+        if len(symbol_list) > 10:
+            return "Error: Maximum 10 cryptocurrency symbols allowed for correlation analysis."
+        
+        # Validate days parameter
+        if days < 7:
+            days = 7
+        elif days > 365:
+            days = 365
+        
+        # Fetch correlation data
+        correlation_data = await get_crypto_correlations(symbol_list, days)
+        
+        result = f"Cryptocurrency Correlation Analysis:\n"
+        result += f"Analysis Period: {days} days\n"
+        result += f"Data Points: {correlation_data['data_points']}\n"
+        result += f"Cryptocurrencies: {', '.join(correlation_data['symbols'])}\n\n"
+        
+        if not correlation_data['correlations']:
+            return f"{result}No correlation data available for the provided symbols."
+        
+        result += "Correlation Matrix:\n"
+        result += "-" * 50 + "\n"
+        
+        # Sort correlations by absolute value (strongest first)
+        correlations = correlation_data['correlations']
+        sorted_pairs = sorted(
+            correlations.items(), 
+            key=lambda x: abs(x[1]['correlation']) if x[1]['correlation'] is not None else 0, 
+            reverse=True
+        )
+        
+        for pair_key, corr_data in sorted_pairs:
+            symbol1 = corr_data['symbol1']
+            symbol2 = corr_data['symbol2']
+            correlation = corr_data['correlation']
+            
+            if correlation is not None:
+                # Format correlation with appropriate arrow and color indication
+                if correlation >= 0.7:
+                    arrow = "↗↗"  # Strong positive
+                elif correlation >= 0.3:
+                    arrow = "↗"   # Moderate positive
+                elif correlation >= -0.3:
+                    arrow = "↔"   # Weak/neutral
+                elif correlation >= -0.7:
+                    arrow = "↙"   # Moderate negative
+                else:
+                    arrow = "↙↙"  # Strong negative
+                
+                interpretation = interpret_correlation(correlation)
+                result += f"{symbol1} {arrow} {symbol2}: {correlation:+.3f} ({interpretation})\n"
+            else:
+                error_msg = corr_data.get('error', 'calculation failed')
+                result += f"{symbol1} ↔ {symbol2}: Error - {error_msg}\n"
+        
+        # Add summary insights
+        valid_correlations = [
+            corr_data['correlation'] 
+            for corr_data in correlations.values() 
+            if corr_data['correlation'] is not None
+        ]
+        
+        if valid_correlations:
+            avg_correlation = sum(valid_correlations) / len(valid_correlations)
+            max_correlation = max(valid_correlations)
+            min_correlation = min(valid_correlations)
+            
+            result += f"\nSummary Insights:\n"
+            result += f"Average Correlation: {avg_correlation:+.3f}\n"
+            result += f"Highest Correlation: {max_correlation:+.3f}\n"
+            result += f"Lowest Correlation: {min_correlation:+.3f}\n"
+            
+            if avg_correlation >= 0.5:
+                result += "Overall: Cryptocurrencies show strong positive correlation (tend to move together)\n"
+            elif avg_correlation >= 0.2:
+                result += "Overall: Cryptocurrencies show moderate positive correlation\n"
+            elif avg_correlation >= -0.2:
+                result += "Overall: Cryptocurrencies show weak correlation (relatively independent movements)\n"
+            else:
+                result += "Overall: Cryptocurrencies show negative correlation (tend to move in opposite directions)\n"
+        
+        return result
+        
+    except ValueError as ve:
+        return f"Validation Error: {str(ve)}. Please check your input and try again."
+    except Exception as e:
+        return f"Error fetching correlation data: {str(e)}. Please try again later."
+
+# ===== METTA KNOWLEDGE GRAPH ENHANCED TOOLS =====
+# These tools provide additional AI-powered analysis when MeTTa is available
+
+@mcp.tool()
+async def get_intelligent_crypto_analysis(coin_symbol: str) -> str:
+    """Get enhanced cryptocurrency analysis with AI-powered insights and risk assessment."""
+    try:
+        coin_symbol = coin_symbol.upper()
+        coin_name = get_coin_name(coin_symbol)
+        
+        # Get basic market data (using existing functionality)
+        try:
+            market_data = await get_coin_market_data(coin_symbol)
+            price = market_data['current_price']
+        except Exception as e:
+            return f"Error fetching market data for {coin_symbol}: {str(e)}"
+        
+        result = f"🧠 Enhanced Analysis for {coin_name} ({coin_symbol}):\\n\\n"
+        
+        # Market Data Section (existing functionality)
+        result += f"📊 Current Market Data:\\n"
+        result += f"Price: ${price:,.2f} USD\\n"
+        if 'market_cap' in market_data:
+            result += f"Market Cap: ${market_data['market_cap']:,.0f} USD\\n"
+        if 'price_change_24h' in market_data:
+            result += f"24h Change: {market_data['price_change_24h']:+.2f}%\\n"
+        if 'volume_24h' in market_data:
+            result += f"24h Volume: ${market_data['volume_24h']:,.0f} USD\\n"
+        
+        # Enhanced Analysis with MeTTa Knowledge (if available)
+        if knowledge_graph and knowledge_graph.is_available():
+            result += f"\\n🔍 AI-Powered Knowledge Analysis:\\n"
+            
+            # Update knowledge graph with fresh market data
+            try:
+                knowledge_graph.add_market_data(
+                    coin_symbol, 
+                    price,
+                    market_data.get('volume_24h', 0),
+                    market_data.get('market_cap', 0),
+                    market_data.get('price_change_24h', 0)
+                )
+            except:
+                pass  # Don't fail if market data update fails
+            
+            # Get comprehensive crypto info from knowledge graph
+            crypto_info = knowledge_graph.query_crypto_info(coin_symbol)
+            
+            if crypto_info:
+                if 'category' in crypto_info:
+                    result += f"Category: {crypto_info['category'].title()}\\n"
+                
+                if 'risk_score' in crypto_info:
+                    risk_score = crypto_info['risk_score']
+                    risk_level = format_risk_level(risk_score)
+                    result += f"Risk Assessment: {risk_level} (Score: {risk_score}/100)\\n"
+                
+                if 'volatility_level' in crypto_info and 'volatility_value' in crypto_info:
+                    vol_level = crypto_info['volatility_level']
+                    vol_value = crypto_info['volatility_value']
+                    result += f"Volatility: {vol_level.title()} (~{vol_value}% annually)\\n"
+            
+            # Get market sentiment insights
+            try:
+                fgi_data = await fetch_fgi()
+                fgi_value = fgi_data['value']
+                market_condition = interpret_market_condition(fgi_value)
+                market_insights = knowledge_graph.query_market_insights(fgi_value)
+                
+                result += f"\\n💭 Market Sentiment Analysis:\\n"
+                result += f"Fear & Greed Index: {fgi_value}/100 ({market_condition['condition']} {market_condition['emoji']})\\n"
+                result += f"Market Advice: {market_condition['advice']}\\n"
+                
+                # Show relevant insights for this specific coin
+                relevant_insights = [insight for insight in market_insights if coin_symbol in insight]
+                if relevant_insights:
+                    result += f"\\n📈 {coin_symbol} Specific Insights:\\n"
+                    for insight in relevant_insights[:2]:  # Show top 2 relevant insights
+                        result += f"• {insight}\\n"
+                        
+            except Exception as e:
+                result += f"• Market sentiment data unavailable: {str(e)}\\n"
+        
+        else:
+            result += f"\\n⚠️  Enhanced AI analysis unavailable (MeTTa not installed)\\n"
+            result += f"Install MeTTa for advanced risk assessment and market intelligence\\n"
+        
+        return result
+        
+    except Exception as e:
+        return f"Error in intelligent analysis for {coin_symbol}: {str(e)}"
+
+@mcp.tool()
+async def get_ai_portfolio_recommendation(risk_profile: str, investment_amount: float = 10000.0) -> str:
+    """Get AI-powered portfolio recommendations with risk assessment and market timing advice."""
+    try:
+        risk_profile = risk_profile.lower().strip()
+        
+        if risk_profile not in ['conservative', 'moderate', 'aggressive']:
+            return "Error: Risk profile must be 'conservative', 'moderate', or 'aggressive'"
+        
+        result = f"🎯 AI-Powered Portfolio Recommendation:\\n"
+        result += f"Risk Profile: {risk_profile.title()}\\n"
+        result += f"Investment Amount: ${investment_amount:,.2f}\\n\\n"
+        
+        # Enhanced recommendations with MeTTa knowledge
+        if knowledge_graph and knowledge_graph.is_available():
+            allocation = knowledge_graph.get_portfolio_allocation(risk_profile)
+            
+            if not allocation:
+                return f"Error: No allocation data available for {risk_profile} risk profile in knowledge graph"
+            
+            result += f"📋 AI-Recommended Allocation:\\n"
+            formatted_allocation = format_portfolio_allocation(allocation, investment_amount)
+            
+            for item in formatted_allocation:
+                symbol = item['symbol']
+                percentage = item['percentage']
+                amount = item.get('formatted_amount', f"${(percentage/100 * investment_amount):,.2f}")
+                
+                # Get risk indicator from knowledge graph
+                crypto_info = knowledge_graph.query_crypto_info(symbol)
+                risk_indicator = ""
+                if 'risk_score' in crypto_info:
+                    risk_score = crypto_info['risk_score']
+                    risk_indicator = f" {format_risk_level(risk_score)}"
+                
+                coin_name = get_coin_name(symbol)
+                result += f"• {symbol} ({coin_name}): {percentage}% ({amount}){risk_indicator}\\n"
+            
+            # Portfolio risk assessment
+            risk_assessment = knowledge_graph.get_risk_assessment(allocation)
+            
+            result += f"\\n📊 Portfolio Risk Analysis:\\n"
+            result += f"Overall Risk Score: {risk_assessment['total_risk_score']:.1f}/100\\n"
+            result += f"Risk Level: {format_risk_level(risk_assessment['total_risk_score'])}\\n"
+            result += f"Expected Portfolio Volatility: {risk_assessment['total_volatility']:.1f}%\\n"
+            
+            # Market timing advice
+            try:
+                fgi_data = await fetch_fgi()
+                fgi_value = fgi_data['value']
+                market_condition = interpret_market_condition(fgi_value)
+                
+                result += f"\\n⏰ Market Timing Advice:\\n"
+                result += f"Current Market: {market_condition['condition']} {market_condition['emoji']} (FGI: {fgi_value})\\n"
+                result += f"Investment Strategy: {market_condition['advice']}\\n"
+                
+                if market_condition['urgency'] == 'high':
+                    result += f"⚡ High urgency - {market_condition['action']} opportunity!\\n"
+                
+            except Exception as e:
+                result += f"• Market timing data unavailable: {str(e)}\\n"
+            
+            result += f"\\n💡 AI Recommendations:\\n"
+            result += f"• Rebalance portfolio monthly during volatile periods\\n"
+            result += f"• Monitor correlation changes during market stress\\n"
+            result += f"• Maintain minimum 5-10% stablecoin allocation for opportunities\\n"
+            result += f"• Consider dollar-cost averaging for large positions\\n"
+        
+        else:
+            # Fallback recommendations without MeTTa
+            result += f"⚠️  Basic recommendation (Enhanced AI unavailable)\\n\\n"
+            if risk_profile == 'conservative':
+                basic_allocation = {'BTC': 40, 'ETH': 30, 'USDC': 30}
+            elif risk_profile == 'moderate':
+                basic_allocation = {'BTC': 30, 'ETH': 35, 'SOL': 20, 'USDC': 15}
+            else:  # aggressive
+                basic_allocation = {'BTC': 20, 'ETH': 25, 'SOL': 25, 'ADA': 15, 'MATIC': 15}
+            
+            result += "Recommended Allocation:\\n"
+            for symbol, percent in basic_allocation.items():
+                amount = (percent / 100) * investment_amount
+                coin_name = get_coin_name(symbol)
+                result += f"• {symbol} ({coin_name}): {percent}% (${amount:,.2f})\\n"
+        
+        return result
+        
+    except Exception as e:
+        return f"Error generating AI portfolio recommendation: {str(e)}"
+
+@mcp.tool()
+async def get_metta_knowledge_status() -> str:
+    """Get status and capabilities of the MeTTa Knowledge Graph system."""
+    try:
+        result = f"🧠 MeTTa Knowledge Graph Status:\\n\\n"
+        
+        if knowledge_graph and knowledge_graph.is_available():
+            result += f"✅ Status: Active and Operational\\n"
+            result += f"✅ Symbolic Reasoning: Enabled\\n"
+            result += f"✅ Market Intelligence: Available\\n\\n"
+            
+            # Get knowledge statistics
+            summary = knowledge_graph.get_knowledge_summary()
+            
+            result += f"📊 Knowledge Base Statistics:\\n"
+            result += f"• Cryptocurrencies: {summary.get('cryptocurrencies', 0)}\\n"
+            result += f"• Correlation relationships: {summary.get('correlations', 0)}\\n"
+            result += f"• Risk assessments: {summary.get('risk_assessments', 0)}\\n\\n"
+            
+            result += f"🚀 Enhanced Capabilities Available:\\n"
+            result += f"• Intelligent crypto analysis with risk scoring\\n"
+            result += f"• AI-powered portfolio recommendations\\n"
+            result += f"• Market sentiment integration (Fear & Greed Index)\\n"
+            result += f"• Multi-factor risk assessment\\n"
+            result += f"• Correlation-aware portfolio construction\\n"
+            result += f"• Symbolic reasoning for complex decisions\\n\\n"
+            
+            result += f"📈 Supported Assets:\\n"
+            supported_assets = [
+                "BTC (Bitcoin) - Layer 1", "ETH (Ethereum) - Layer 1", 
+                "SOL (Solana) - Layer 1", "ADA (Cardano) - Layer 1",
+                "DOT (Polkadot) - Layer 1", "AVAX (Avalanche) - Layer 1",
+                "MATIC (Polygon) - Layer 2", "UNI (Uniswap) - DeFi",
+                "LINK (Chainlink) - DeFi Oracle", "DOGE (Dogecoin) - Memecoin",
+                "USDC (USD Coin) - Stablecoin", "USDT (Tether) - Stablecoin"
+            ]
+            
+            for i, asset in enumerate(supported_assets, 1):
+                result += f"{i:2d}. {asset}\\n"
+                
+        elif METTA_AVAILABLE:
+            result += f"⚠️  Status: Initialized but MeTTa unavailable\\n"
+            result += f"❌ Symbolic Reasoning: Disabled\\n"
+            result += f"⚠️  Running in fallback mode\\n\\n"
+            result += f"Issue: MeTTa package installed but not functional\\n"
+            
+        else:
+            result += f"❌ Status: Not Available\\n"
+            result += f"❌ Symbolic Reasoning: Disabled\\n"
+            result += f"❌ Enhanced Analysis: Unavailable\\n\\n"
+            result += f"📦 Installation Instructions:\\n"
+            result += f"1. pip install hyperon\\n"
+            result += f"2. Restart the MCP server\\n"
+            result += f"3. Run get_metta_knowledge_status() to verify\\n\\n"
+        
+        result += f"🔧 Available MCP Tools (Always Available):\\n"
+        result += f"• get_wallet_balance() - Wallet information\\n"
+        result += f"• get_crypto_price() - Current prices\\n"
+        result += f"• get_coin_correlations() - Correlation analysis\\n"
+        result += f"• get_fear_greed_index() - Market sentiment\\n"
+        result += f"• get_portfolio_summary() - Wallet analysis\\n"
+        
+        if knowledge_graph and knowledge_graph.is_available():
+            result += f"\\n🚀 Enhanced MCP Tools (MeTTa-Powered):\\n"
+            result += f"• get_intelligent_crypto_analysis() - AI analysis\\n"
+            result += f"• get_ai_portfolio_recommendation() - Smart allocation\\n"
+        
+        return result
+        
+    except Exception as e:
+        return f"Error checking MeTTa knowledge status: {str(e)}"
+
 if __name__ == "__main__":
+    print("🚀 Starting Enhanced DeFi Portfolio Manager MCP Agent")
+    print(f"📡 Server: wallet-market-fgi with {len(mcp._tools)} MCP tools")
+    
+    # Show MeTTa status
+    if METTA_AVAILABLE and knowledge_graph and knowledge_graph.is_available():
+        print("🧠 AI Enhancement: MeTTa Knowledge Graph ACTIVE")
+        print("   ✅ Symbolic reasoning enabled")
+        print("   ✅ Intelligent portfolio recommendations")
+        print("   ✅ Risk assessment with market sentiment")
+        summary = knowledge_graph.get_knowledge_summary()
+        print(f"   📊 Knowledge: {summary.get('cryptocurrencies', 0)} assets, {summary.get('correlations', 0)} correlations")
+    elif METTA_AVAILABLE:
+        print("⚠️  AI Enhancement: MeTTa installed but not functional")
+        print("   🔄 Running in fallback mode")
+    else:
+        print("💡 AI Enhancement: Install 'pip install hyperon' for advanced features")
+    
+    print("\\n🔧 Available Enhanced Tools:")
+    print("   • get_intelligent_crypto_analysis() - AI-powered crypto analysis")
+    print("   • get_ai_portfolio_recommendation() - Smart portfolio allocation") 
+    print("   • get_metta_knowledge_status() - Check AI system status")
+    print("\\n🔗 Standard Tools: wallet balance, prices, correlations, market data")
+    print("\\n" + "="*60)
+    
     # Initialize and run the server
     mcp.run(transport='stdio')
