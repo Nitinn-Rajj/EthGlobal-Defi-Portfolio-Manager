@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
+import { useChat } from '../../contexts/ChatContext';
 import { formatAddress, formatBalance } from '../../utils/wallet';
 import { scrollToDashboard } from '../../utils/scroll';
 import './Header.css';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showDisconnectOptions, setShowDisconnectOptions] = useState(false);
   const { 
     isConnected, 
     account, 
@@ -15,8 +17,11 @@ const Header = () => {
     error, 
     connect, 
     disconnect,
+    forceDisconnect,
     clearError
   } = useWallet();
+  
+  const { isChatOpen, toggleChat } = useChat();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,11 +45,34 @@ const Header = () => {
 
   const handleWalletClick = () => {
     if (isConnected) {
-      disconnect();
+      // For connected wallets, show disconnect options or just disconnect
+      setShowDisconnectOptions(!showDisconnectOptions);
     } else {
       connect();
     }
   };
+
+  const handleRegularDisconnect = () => {
+    setShowDisconnectOptions(false);
+    disconnect();
+  };
+
+  const handleForceDisconnect = () => {
+    setShowDisconnectOptions(false);
+    forceDisconnect();
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDisconnectOptions && !event.target.closest('.header__wallet')) {
+        setShowDisconnectOptions(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showDisconnectOptions]);
 
   const handleDashboardClick = () => {
     scrollToDashboard();
@@ -61,6 +89,15 @@ const Header = () => {
           <div className="header__actions">
             <button className="header__nav-btn" onClick={handleDashboardClick}>
               Dashboards
+            </button>
+            
+            <button 
+              className={`header__nav-btn header__nav-btn--chat ${isChatOpen ? 'header__nav-btn--active' : ''}`}
+              onClick={toggleChat}
+              title={isChatOpen ? 'Close AI Chat' : 'Open AI Chat'}
+            >
+              <span className="header__nav-btn-icon">🤖</span>
+              AI Chat
             </button>
             
             {/* Error Display */}
@@ -87,31 +124,56 @@ const Header = () => {
                 {isConnecting ? (
                   <>
                     <span className="header__wallet-spinner"></span>
-                    Connecting...
+                    {isConnected ? 'Disconnecting...' : 'Connecting...'}
                   </>
                 ) : isConnected ? (
                   <div className="header__wallet-info">
                     <div className="header__wallet-address">
                       {formatAddress(account)}
                     </div>
-                    <div className="header__wallet-balance">
+                    {/* <div className="header__wallet-balance">
                       {formatBalance(balance)} ETH
-                    </div>
+                    </div> */}
                   </div>
                 ) : (
                   'Connect Wallet'
                 )}
               </button>
               
+              {/* Disconnect Options Dropdown */}
+              {isConnected && showDisconnectOptions && (
+                <div className="header__disconnect-dropdown">
+                  <button 
+                    className="header__disconnect-option"
+                    onClick={handleRegularDisconnect}
+                    title="Disconnect locally and attempt to revoke permissions"
+                  >
+                    <span className="header__disconnect-icon">🔌</span>
+                    Quick Disconnect
+                  </button>
+                  <button 
+                    className="header__disconnect-option header__disconnect-option--force"
+                    onClick={handleForceDisconnect}
+                    title="Force complete disconnect with page reload"
+                  >
+                    <span className="header__disconnect-icon">⚡</span>
+                    Force Disconnect
+                  </button>
+                  <div className="header__disconnect-info">
+                    <small>Force disconnect clears all data and reloads the page</small>
+                  </div>
+                </div>
+              )}
+              
               {/* Network Info */}
-              {isConnected && network && (
+              {/* {isConnected && network && !showDisconnectOptions && (
                 <div className="header__network">
                   <span className="header__network-indicator"></span>
                   <span className="header__network-name">
                     {network.name === 'unknown' ? `Chain ${network.chainId}` : network.name}
                   </span>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

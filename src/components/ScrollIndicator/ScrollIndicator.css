@@ -1,7 +1,7 @@
 .scroll-indicator {
   position: fixed;
   bottom: 40px;
-  left: 50%;
+  left: 42%;
   transform: translateX(-50%);
   z-index: 100;
   background: rgba(0, 0, 0, 0.3);
@@ -18,6 +18,7 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   animation: bounce 2s infinite;
   display: flex;
+
   flex-direction: column;
   align-items: center;
   gap: 8px;

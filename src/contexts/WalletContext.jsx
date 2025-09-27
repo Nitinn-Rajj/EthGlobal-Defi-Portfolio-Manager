@@ -5,6 +5,12 @@ import {
   isMetaMaskInstalled,
   onAccountsChanged,
   onChainChanged,
+  disconnectWallet,
+  clearWalletCache,
+  shouldShowDisconnectGuidance,
+  forceWalletReset,
+  getManualDisconnectInstructions,
+  getDisconnectStatusMessage,
 } from '../utils/wallet';
 
 // Initial state
@@ -115,13 +121,123 @@ export const WalletProvider = ({ children }) => {
   };
 
   // Disconnect wallet function
-  const disconnect = () => {
-    dispatch({ type: WALLET_ACTIONS.SET_DISCONNECTED });
+  const disconnect = async () => {
+    dispatch({ type: WALLET_ACTIONS.SET_CONNECTING }); // Show loading state during disconnect
+    
+    try {
+      const result = await disconnectWallet();
+      
+      // Always clear local state
+      dispatch({ type: WALLET_ACTIONS.SET_DISCONNECTED });
+      
+      // Provide user feedback based on disconnect method
+      if (result.success) {
+        if (result.method === 'revoke-permissions') {
+          console.log('Wallet disconnected successfully - permissions revoked');
+        } else if (result.method === 'user-rejected') {
+          console.log('Wallet disconnected successfully - user rejected reconnection');
+        } else {
+          console.log('Wallet disconnected successfully');
+        }
+      } else if (result.method === 'manual') {
+        // Check if manual disconnection guidance is needed
+        const needsGuidance = await shouldShowDisconnectGuidance();
+        
+        if (needsGuidance) {
+          console.log('Wallet state cleared locally. MetaMask still shows connection.');
+          
+          // Show informational message to user
+          dispatch({
+            type: WALLET_ACTIONS.SET_ERROR,
+            payload: 'Disconnected locally. For complete disconnect, click the MetaMask extension → Connected sites → Disconnect this site.'
+          });
+          
+          // Clear this informational message after 10 seconds
+          setTimeout(() => {
+            dispatch({ type: WALLET_ACTIONS.CLEAR_ERROR });
+          }, 10000);
+        } else {
+          console.log('Wallet disconnected successfully');
+        }
+      } else if (result.method === 'error') {
+        dispatch({
+          type: WALLET_ACTIONS.SET_ERROR,
+          payload: `Disconnect error: ${result.message}`
+        });
+        
+        // Clear error after delay
+        setTimeout(() => {
+          dispatch({ type: WALLET_ACTIONS.CLEAR_ERROR });
+        }, 5000);
+      }
+      
+      // Force a brief delay and then check if we're truly disconnected
+      setTimeout(async () => {
+        try {
+          const currentAccount = await getCurrentAccount();
+          if (currentAccount) {
+            // Still connected, show guidance
+            dispatch({
+              type: WALLET_ACTIONS.SET_ERROR,
+              payload: 'For complete disconnect, please manually disconnect from MetaMask extension.'
+            });
+            
+            setTimeout(() => {
+              dispatch({ type: WALLET_ACTIONS.CLEAR_ERROR });
+            }, 8000);
+          }
+        } catch (error) {
+          // Error getting account likely means we're disconnected, which is good
+          console.log('Disconnect verification complete');
+        }
+      }, 1000);
+      
+    } catch (error) {
+      // Fallback: always clear local state even if disconnect fails
+      dispatch({ type: WALLET_ACTIONS.SET_DISCONNECTED });
+      console.error('Error during disconnect:', error);
+      
+      dispatch({
+        type: WALLET_ACTIONS.SET_ERROR,
+        payload: 'Wallet disconnected locally. Some cached data may persist in MetaMask.'
+      });
+      
+      // Clear error after a delay
+      setTimeout(() => {
+        dispatch({ type: WALLET_ACTIONS.CLEAR_ERROR });
+      }, 6000);
+    }
   };
 
   // Clear error function
   const clearError = () => {
     dispatch({ type: WALLET_ACTIONS.CLEAR_ERROR });
+  };
+
+  // Force complete wallet disconnect with page reload
+  const forceDisconnect = async () => {
+    dispatch({ type: WALLET_ACTIONS.SET_CONNECTING });
+    
+    try {
+      const result = await forceWalletReset();
+      
+      if (result.success) {
+        console.log('Force disconnect initiated - page will reload');
+        // The forceWalletReset function handles the page reload
+      } else {
+        dispatch({ type: WALLET_ACTIONS.SET_DISCONNECTED });
+        dispatch({
+          type: WALLET_ACTIONS.SET_ERROR,
+          payload: `Force disconnect failed: ${result.message}`
+        });
+      }
+    } catch (error) {
+      dispatch({ type: WALLET_ACTIONS.SET_DISCONNECTED });
+      dispatch({
+        type: WALLET_ACTIONS.SET_ERROR,
+        payload: 'Force disconnect failed. Please manually disconnect from MetaMask.'
+      });
+    }
   };
 
   // Check if already connected on mount
@@ -184,7 +300,9 @@ export const WalletProvider = ({ children }) => {
     ...state,
     connect,
     disconnect,
+    forceDisconnect,
     clearError,
+    getManualDisconnectInstructions,
   };
 
   return (

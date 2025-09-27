@@ -5,12 +5,17 @@ import LiquidEther from './components/Background'
 import Dashboard from './components/Dashboard/Dashboard'
 import ScrollIndicator from './components/ScrollIndicator/ScrollIndicator'
 import TextType from './components/textanimation/index'
+import ChatPanel from './components/ChatPanel/ChatPanel'
+import FloatingChatButton from './components/FloatingChatButton/FloatingChatButton'
 import { WalletProvider } from './contexts/WalletContext'
+import { ChatProvider, useChat } from './contexts/ChatContext'
 
-function App() {
+// Inner App component to use chat context
+const AppContent = () => {
+  const { isChatOpen } = useChat();
+
   return (
-    <WalletProvider>
-    <div className="app">
+    <div className={`app ${isChatOpen ? 'app--chat-open' : ''}`}>
       <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 0 }}>
         <LiquidEther
           colors={[ '#5227FF', '#FF9FFC', '#B19EEF' ]}
@@ -51,7 +56,18 @@ function App() {
       </main>
       <Footer />
       <ScrollIndicator />
+      <ChatPanel />
+      <FloatingChatButton />
     </div>
+  );
+};
+
+function App() {
+  return (
+    <WalletProvider>
+      <ChatProvider>
+        <AppContent />
+      </ChatProvider>
     </WalletProvider>
   )
 }

@@ -1,0 +1,106 @@
+/* Floating Chat Button Styles */
+.floating-chat-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #7d12ff 0%, #ab20fd 100%);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1002; /* Higher than chat panel */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 4px 20px rgba(125, 18, 255, 0.4),
+    0 8px 32px rgba(125, 18, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.floating-chat-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 6px 24px rgba(125, 18, 255, 0.5),
+    0 12px 40px rgba(125, 18, 255, 0.3);
+}
+
+.floating-chat-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.floating-chat-btn__icon {
+  font-size: 1.8rem;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.floating-chat-btn__pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  animation: pulse 2s infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .floating-chat-btn {
+    width: 56px;
+    height: 56px;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1002; /* Always on top */
+  }
+  
+  .floating-chat-btn__icon {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-chat-btn {
+    width: 50px;
+    height: 50px;
+    bottom: 16px;
+    right: 16px;
+    z-index: 1002; /* Always on top */
+  }
+  
+  .floating-chat-btn__icon {
+    font-size: 1.4rem;
+  }
+}
+
+/* Ensure button is always visible and not affected by scroll */
+.floating-chat-btn {
+  position: fixed !important;
+  right: 24px !important;
+  bottom: 24px !important;
+}
+
+/* Remove the hide on small screens rule since we want it always visible */
