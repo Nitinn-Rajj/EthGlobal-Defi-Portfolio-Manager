@@ -1,0 +1,37 @@
+# Core Python packages
+python-dotenv>=1.1.1
+
+# Google AI/Gemini
+google-generativeai>=0.8.5
+
+# Web3 and blockchain
+web3>=7.13.0
+
+# HTTP clients
+httpx>=0.28.1
+requests>=2.32.5
+
+# uAgents framework
+uagents>=0.22.9
+uagents-adapter>=0.5.0
+uagents-core>=0.3.9
+
+# MCP (Model Context Protocol) 
+mcp>=1.15.0
+fastmcp>=2.12.4
+
+# Data handling
+pydantic>=2.11.9
+
+# Async support
+aiohttp>=3.12.15
+anyio>=4.11.0
+
+# Optional: Development and testing tools (uncomment if needed)
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+
+# Optional: Code quality tools (uncomment if needed)
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.5.0

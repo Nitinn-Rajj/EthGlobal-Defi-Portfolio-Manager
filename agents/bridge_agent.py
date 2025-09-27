@@ -93,7 +93,7 @@ async def chat_endpoint(ctx: Context, req: Request) -> Response:
             if JSON_CONVERSION_AVAILABLE:
                 try:
                     json_response = process_agent_response(response_text)
-                    ctx.logger.info(f"Converted response to JSON format")
+                    ctx.logger.info(f"Converted response to JSON format {json_response}")
                     final_response_text = json_response
                 except Exception as json_error:
                     ctx.logger.warning(f"JSON conversion failed: {json_error}, sending original response")
