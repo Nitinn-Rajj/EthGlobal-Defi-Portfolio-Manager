@@ -3,6 +3,7 @@ import { useWallet } from '../../contexts/WalletContext';
 import { useChat } from '../../contexts/ChatContext';
 import { formatAddress, formatBalance } from '../../utils/wallet';
 import { scrollToDashboard } from '../../utils/scroll';
+import logoImage from '../../assets/logo.jpeg';
 import './Header.css';
 
 const Header = () => {
@@ -83,8 +84,8 @@ const Header = () => {
       <div className="header__container">
         <div className="header__content">
           <div className="header__logo">
-            <span className="header__logo-icon">⚡</span>
-            <span className="header__logo-text">Portfolio Manager</span>
+            <img src={logoImage} alt="FinverseX Logo" className="header__logo-icon" />
+            <span className="header__logo-text">ASI FinverseX</span>
           </div>
           <div className="header__actions">
             <button className="header__nav-btn" onClick={handleDashboardClick}>

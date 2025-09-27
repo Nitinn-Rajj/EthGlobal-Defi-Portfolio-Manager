@@ -10,8 +10,8 @@ const ChatPanel = () => {
     <div className={`chat-panel ${isChatOpen ? 'chat-panel--open' : ''}`}>
       <div className="chat-panel__header">
         <div className="chat-panel__title">
-          <span className="chat-panel__icon">🤖</span>
-          <h3>AI DeFi Assistant</h3>
+          {/* <span className="chat-panel__icon">🤖</span> */}
+          <h3>ASI Assistant</h3>
         </div>
         <button 
           className="chat-panel__close"

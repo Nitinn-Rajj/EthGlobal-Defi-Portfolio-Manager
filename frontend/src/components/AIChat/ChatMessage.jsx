@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ChainOfThought from './ChainOfThought';
 import StructuredData from './StructuredData';
+import logoImage from '../../assets/logo.jpeg';
 
 const ChatMessage = ({ message, isPending }) => {
   const [showReasoning, setShowReasoning] = useState(false);
@@ -98,7 +99,7 @@ const ChatMessage = ({ message, isPending }) => {
   return (
     <div className={`chat-message ${message.type === 'user' ? 'user' : 'ai'} ${message.isError ? 'error' : ''} ${message.isSuccess ? 'success' : ''}`}>
       <div className="chat-message__avatar">
-        {message.type === 'user' ? '👤' : '🤖'}
+        {message.type === 'user' ? '👤' : <img src={logoImage} alt="AI Avatar" className="chat-message__ai-avatar" />}
       </div>
       
       <div className="chat-message__bubble">

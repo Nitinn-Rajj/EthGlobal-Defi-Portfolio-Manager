@@ -112,6 +112,14 @@
   flex-shrink: 0;
 }
 
+.chat-message__ai-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: brightness(1.1) drop-shadow(0 0 4px rgba(125, 18, 255, 0.3));
+}
+
 .chat-message.user .chat-message__avatar {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);

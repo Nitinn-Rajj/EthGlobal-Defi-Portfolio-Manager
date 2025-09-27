@@ -35,7 +35,8 @@
 }
 
 .app--chat-open .header__logo-icon {
-  font-size: 1.3rem; /* Smaller logo icon */
+  width: 2.2rem;
+  height: 2.2rem;
 }
 
 .app--chat-open .header__actions {
@@ -117,7 +118,10 @@
 }
 
 .header__logo-icon {
-  font-size: 1.6rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 8px;
+  object-fit: cover;
   filter: drop-shadow(0 0 8px rgba(125, 18, 255, 0.5));
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -487,7 +491,8 @@
   }
   
   .header__logo-icon {
-    font-size: 1.4rem;
+    width: 2.2rem;
+    height: 2.2rem;
   }
   
   .header__actions {
@@ -559,7 +564,8 @@
   }
   
   .header--scrolled .header__logo-icon {
-    font-size: 1.1rem;
+    width: 1.8rem;
+    height: 1.8rem;
   }
   
   .header--scrolled .header__actions {
@@ -626,7 +632,8 @@
   }
   
   .header__logo-icon {
-    font-size: 1.5rem;
+    width: 2.1rem;
+    height: 2.1rem;
   }
   
   .header__actions {
@@ -682,7 +689,8 @@
   }
   
   .header--scrolled .header__logo-icon {
-    font-size: 1.2rem;
+    width: 1.8rem;
+    height: 1.8rem;
   }
   
   .header--scrolled .header__actions {
