@@ -1,0 +1,131 @@
+/* Custom Font Declarations */
+
+/* Aeonik Font Family - For Headings */
+@font-face {
+  font-family: 'Aeonik';
+  src: url('./assets/fonts/aeonik/fonnts.com-Aeonik-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aeonik';
+  src: url('./assets/fonts/aeonik/fonnts.com-Aeonik-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Input Sans Font Family - For Body Text */
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_Thin.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_ThinIta.otf') format('opentype');
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_ExLight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_ExLightIta.otf') format('opentype');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_LightIta.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_MediumIta.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_Bold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_BoldIta.otf') format('opentype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_Black.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Input Sans';
+  src: url('./assets/fonts/input-sans/fonnts.com-InputSans_BlackIta.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}

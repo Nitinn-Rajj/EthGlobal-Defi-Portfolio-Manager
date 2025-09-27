@@ -1,0 +1,187 @@
+:root {
+  /* Color Palette - Original colors for reference */
+  --color-black: #000000;
+  --color-purple-primary: #7d12ff;
+  --color-purple-secondary: #ab20fd;
+  --color-dark-blue: #200589;
+  --color-light: #fbf8fd;
+
+  /* Dark Theme Color Variables */
+  --color-primary: var(--color-purple-primary);
+  --color-secondary: var(--color-purple-secondary);
+  --color-accent: var(--color-dark-blue);
+  --color-background: #0a0a0a;
+  --color-surface: #1a1a1a;
+  --color-surface-elevated: #262626;
+  --color-text: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: var(--color-black);
+
+  /* Interactive States */
+  --color-primary-hover: #8f2bff;
+  --color-secondary-hover: #b540fd;
+  --color-accent-hover: #2c0a99;
+
+  /* Status Colors */
+  --color-success: #22c55e;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-info: var(--color-purple-secondary);
+
+  /* Border and Shadow - Dark Theme */
+  --color-border: #374151;
+  --color-border-dark: #4b5563;
+  --color-border-light: #2d3748;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-purple: 0 4px 14px 0 rgba(125, 18, 255, 0.4);
+  --shadow-glow: 0 0 20px 0 rgba(125, 18, 255, 0.1);
+
+  /* Spacing Scale */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Typography */
+  --font-heading: 'Aeonik', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Input Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  
+  font-family: var(--font-body);
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--color-text);
+  background-color: var(--color-background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Typography Scale */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
+
+h5 {
+  font-size: 1.125rem;
+}
+
+h6 {
+  font-size: 1rem;
+}
+
+p {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-text);
+}
+
+/* Links */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* Button Base Styles */
+button {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+}
+
+button:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Input Base Styles */
+input, textarea, select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(125, 18, 255, 0.2);
+  background-color: var(--color-surface-elevated);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-muted);
+}
