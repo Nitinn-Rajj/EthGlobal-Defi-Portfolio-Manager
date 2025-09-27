@@ -1,21 +1,30 @@
-## Base URL
-`http://127.0.0.1:8001`
+# Agent API Documentation
 
-## Endpoints
+## Bridge Agent API
+**Base URL:** `http://127.0.0.1:8001`
 
 ### POST `/chat`
-Main chat interface for cryptocurrency queries.
+Main cryptocurrency query endpoint with 4 different response types.
 
-**Input Model (Request):**
+**Input:**
 ```json
 {
   "text": "string"
 }
 ```
 
-## Response Types
+**Output:**
+```json
+{
+  "timestamp": "integer",
+  "text": "string", 
+  "agent_address": "string"
+}
+```
 
-The `text` field in responses contains JSON with these message types:
+## 4 Response Types
+
+The `text` field contains JSON with one of these 4 message types:
 
 ### 1. Portfolio Details
 ```json
@@ -82,11 +91,59 @@ The `text` field in responses contains JSON with these message types:
 }
 ```
 
+## Dashboard Server API
+**Base URL:** `http://127.0.0.1:5000`
 
-## Query Examples
-- `"Your current ethereum balance on main net is 0.0047"`
-- `"Bitcoin price is $109,379"`
-- `"Swap 0.5 ETH for USDC"`
-- `"Show me BTC, ETH, and SOL prices"`
-- `"How is the market today?"` (returns plain_text)
+### POST `/dashboard`
+Get comprehensive dashboard data for a wallet address.
+
+**Input:**
+```json
+{
+  "text": "wallet_address"
+}
+```
+
+**Output:**
+```json
+{
+  "text": "{...comprehensive_dashboard_json...}",
+  "agent_address": "dashboard_server",
+  "timestamp": "integer"
+}
+```
+
+**Dashboard JSON Structure (inside `text` field):**
+```json
+{
+  "wallet_address": "0x123...",
+  "total_balance_usd": "1234.56",
+  "assets": [
+    {
+      "symbol": "ETH",
+      "balance": "0.5",
+      "usd_value": "1200.00",
+      "percentage": "97.3"
+    }
+  ],
+  "transaction_count": 25,
+  "recent_transactions": [...],
+  "market_data": {...},
+  "portfolio_metrics": {...}
+}
+```
+
+## Example Usage
+
+```bash
+# Chat query
+curl -X POST http://127.0.0.1:8001/chat \
+  -H "Content-Type: application/json" \
+  -d '{"text": "What is Bitcoin price?"}'
+
+# Dashboard data
+curl -X POST http://127.0.0.1:5000/dashboard \
+  -H "Content-Type: application/json" \
+  -d '{"text": "0x742d35Cc6C8F2B2E9E5B2F2F4F6F2F2F2F2F2F2F"}'
+```
 
