@@ -4,6 +4,7 @@ import Footer from './components/Footer/Footer'
 import LiquidEther from './components/Background'
 import Dashboard from './components/Dashboard/Dashboard'
 import ScrollIndicator from './components/ScrollIndicator/ScrollIndicator'
+import TextType from './components/textanimation/index'
 import { WalletProvider } from './contexts/WalletContext'
 
 function App() {
@@ -32,7 +33,16 @@ function App() {
       <Header />
       <main className="app-main">
         <div className="hero-section" >
-          <h1 className="hero-title" style = {{ zIndex:3 }}>Autonomous DeFi Portfolio Management</h1>
+          <TextType 
+            as="h1"
+            className="hero-title"
+            style={{ zIndex: 3 }}
+            text={["Autonomous DeFi Portfolio Management", "AI-Powered Investment Strategies", "Smart Contract Optimization"]}
+            typingSpeed={75}
+            pauseDuration={1500}
+            showCursor={true}
+            cursorCharacter="|"
+          />
           <p className="hero-subtitle">
             Leverage AI-powered agents to optimize your DeFi investments with intelligent rebalancing and risk management.
           </p>

@@ -1,0 +1,28 @@
+.text-type {
+  display: inline-block;
+  white-space: pre-wrap;
+}
+
+.text-type__cursor {
+  margin-left: 0.25rem;
+  display: inline-block;
+  opacity: 1;
+  color: #5227FF; /* Match primary theme color */
+  animation: blink 1s infinite;
+}
+
+.text-type__cursor--hidden {
+  display: none;
+}
+
+/* Cursor blink animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* When used as hero title, ensure proper inheritance */
+.hero-title.text-type {
+  display: block;
+  width: 100%;
+}

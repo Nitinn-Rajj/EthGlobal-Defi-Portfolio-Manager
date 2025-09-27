@@ -655,7 +655,8 @@
   grid-column: span 2;
   padding: 0;
   overflow: hidden;
-  min-height: 600px;
+  height: 600px; /* Fixed height instead of min-height */
+  max-height: 600px; /* Ensure it doesn't exceed this */
 }
 
 .dashboard__card--chat .ai-chat {
@@ -671,13 +672,15 @@
 @media (max-width: 768px) {
   .dashboard__card--chat {
     grid-column: span 1;
-    min-height: 500px;
+    height: 500px; /* Fixed height */
+    max-height: 500px;
   }
 }
 
 @media (max-width: 480px) {
   .dashboard__card--chat {
-    min-height: 400px;
+    height: 400px; /* Fixed height */
+    max-height: 400px;
   }
   
   .dashboard__card--chat .ai-chat {

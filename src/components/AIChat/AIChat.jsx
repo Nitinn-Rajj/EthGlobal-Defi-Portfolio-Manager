@@ -15,15 +15,55 @@ const AIChat = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingSwap, setPendingSwap] = useState(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (force = false) => {
+    if (force || isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    
+    // Consider "near bottom" if within 100px of the bottom
+    const nearBottom = distanceFromBottom < 100;
+    setIsNearBottom(nearBottom);
+    
+    // Show scroll to bottom button if scrolled up more than 200px
+    setShowScrollToBottom(distanceFromBottom > 200);
+  };
+
+  const scrollToTop = () => {
+    messagesContainerRef.current?.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  const jumpToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollToBottom(false);
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
 
   // Mock API call - replace with your actual backend integration
   const sendMessageToAI = async (userMessage) => {
@@ -210,27 +250,60 @@ const AIChat = () => {
         </div>
       </div>
       
-      <div className="ai-chat__messages">
-        {messages.map((message) => (
-          <ChatMessage 
-            key={message.id} 
-            message={message}
-            isPending={pendingSwap?.messageId === message.id}
-          />
-        ))}
-        
-        {isLoading && (
-          <div className="ai-chat__loading">
-            <div className="ai-chat__loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
+      <div className="ai-chat__messages-container">
+        <div className="ai-chat__messages" ref={messagesContainerRef}>
+          {messages.map((message) => (
+            <ChatMessage 
+              key={message.id} 
+              message={message}
+              isPending={pendingSwap?.messageId === message.id}
+            />
+          ))}
+          
+          {isLoading && (
+            <div className="ai-chat__loading">
+              <div className="ai-chat__loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span>AI is thinking...</span>
             </div>
-            <span>AI is thinking...</span>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+        
+        {/* Scroll Controls */}
+        <div className="ai-chat__scroll-controls">
+          {messages.length > 3 && (
+            <button 
+              className="ai-chat__scroll-btn ai-chat__scroll-top"
+              onClick={scrollToTop}
+              title="Scroll to top"
+            >
+              ⬆️
+            </button>
+          )}
+          
+          {showScrollToBottom && (
+            <button 
+              className="ai-chat__scroll-btn ai-chat__scroll-bottom"
+              onClick={jumpToBottom}
+              title="Scroll to bottom"
+            >
+              ⬇️
+            </button>
+          )}
+        </div>
+        
+        {/* Scroll Indicator */}
+        {!isNearBottom && messages.length > 5 && (
+          <div className="ai-chat__scroll-indicator">
+            <span>New messages below</span>
+            <button onClick={jumpToBottom}>↓</button>
           </div>
         )}
-        
-        <div ref={messagesEndRef} />
       </div>
       
       {pendingSwap && (
