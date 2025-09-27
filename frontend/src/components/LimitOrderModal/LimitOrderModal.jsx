@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
+import { createLimitOrder } from '../../apiservices/tradingService';
 import './LimitOrderModal.css';
 
 const LimitOrderModal = ({ isOpen, onClose }) => {
@@ -14,6 +15,18 @@ const LimitOrderModal = ({ isOpen, onClose }) => {
     { symbol: 'DOT', name: 'Polkadot', icon: '●', color: '#E6007A' },
     { symbol: 'LINK', name: 'Chainlink', icon: '🔗', color: '#375BD2' },
   ];
+
+  // Token contract addresses (using common Ethereum mainnet addresses)
+  const TOKEN_ADDRESSES = {
+    'ETH': '0x0000000000000000000000000000000000000000', // ETH placeholder
+    'BTC': '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // WBTC
+    'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    'SOL': '0xD31a59c85aE9D8edEFeC411D448f90841571b89c', // SOL on Ethereum
+    'ADA': '0x3Ee2200Efb3400fAbB9AacF31297cBdD1d435D47', // ADA on Ethereum
+    'DOT': '0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402', // DOT on Ethereum
+    'LINK': '0x514910771AF9Ca656af840dff83E8264EcF986CA',
+  };
 
   // State management
   const [currentStep, setCurrentStep] = useState(1); // 1: Order Details, 2: Review, 3: Private Key
@@ -76,26 +89,50 @@ const LimitOrderModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     if (!privateKey.trim()) {
       setError('Private key is required to create the limit order');
       return;
     }
     
     setIsLoading(true);
-    // Simulate order creation
-    setTimeout(() => {
+    setError('');
+    
+    try {
+      // Convert amounts to wei (assuming 18 decimals for most tokens)
+      const makerAmountInWei = (parseFloat(makingAmount) * Math.pow(10, 18)).toString();
+      const takerAmountInWei = (parseFloat(takingAmount) * Math.pow(10, 18)).toString();
+      
+      const orderParams = {
+        makerTokenAddress: TOKEN_ADDRESSES[makerToken.symbol],
+        takerTokenAddress: TOKEN_ADDRESSES[takerToken.symbol],
+        makerAmount: makerAmountInWei,
+        takerAmount: takerAmountInWei,
+        privateKey: privateKey.trim(),
+        expirationHours: parseFloat(expiryTime)
+      };
+
+      const result = await createLimitOrder(orderParams);
+      
+      if (result.success) {
+        alert(`Limit order created successfully! Order Hash: ${result.orderHash}`);
+        onClose();
+        // Reset form
+        setCurrentStep(1);
+        setMakingAmount('');
+        setTakingAmount('');
+        setPriceRatio('');
+        setPrivateKey('');
+        setError('');
+      } else {
+        setError(result.error || 'Order creation failed');
+      }
+    } catch (error) {
+      console.error('Order creation error:', error);
+      setError(error.message || 'Failed to create limit order');
+    } finally {
       setIsLoading(false);
-      alert('Limit order created successfully! (This is a simulation)');
-      onClose();
-      // Reset form
-      setCurrentStep(1);
-      setMakingAmount('');
-      setTakingAmount('');
-      setPriceRatio('');
-      setPrivateKey('');
-      setError('');
-    }, 2000);
+    }
   };
 
   const handleClose = () => {

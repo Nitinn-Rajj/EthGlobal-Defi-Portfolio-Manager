@@ -22,22 +22,6 @@ export const API_CONFIG = {
     }
   },
   
-  // Ethereum Token Trading API for swaps and limit orders
-  TRADING_API: {
-    BASE_URL: 'http://localhost:3000',
-    ENDPOINTS: {
-      SWAP: '/swap',
-      SWAP_QUOTE: '/swap/quote',
-      SWAP_TOKENS: '/swap/tokens',
-      SWAP_ALLOWANCE: '/swap/allowance',
-      LIMIT_ORDER: '/limit-order',
-      TOKEN_INFO: '/token-info',
-      WALLET_BALANCES: '/wallet-balances',
-      HEALTH: '/health',
-      TOKENS: '/tokens'
-    }
-  },
-  
   // Default request settings
   REQUEST_CONFIG: {
     HEADERS: {
@@ -48,9 +32,6 @@ export const API_CONFIG = {
     RETRY_DELAY: 1000 // 1 second
   }
 };
-
-// Export API_BASE_URL for backward compatibility and convenience
-export const API_BASE_URL = API_CONFIG.TRADING_API.BASE_URL;
 
 // Environment-based configuration
 export const getApiConfig = () => {

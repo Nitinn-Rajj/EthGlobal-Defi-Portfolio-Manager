@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 import { getCurrentPrices } from '../../apiservices/dashboardService';
+import { executeSwap } from '../../apiservices/tradingService';
 import './SwapModal.css';
 
 const SwapModal = ({ isOpen, onClose }) => {
@@ -15,6 +16,18 @@ const SwapModal = ({ isOpen, onClose }) => {
     { symbol: 'DOT', name: 'Polkadot', icon: '●', color: '#E6007A' },
     { symbol: 'LINK', name: 'Chainlink', icon: '🔗', color: '#375BD2' },
   ];
+
+  // Token contract addresses (using common Ethereum mainnet addresses)
+  const TOKEN_ADDRESSES = {
+    'ETH': '0x0000000000000000000000000000000000000000', // ETH placeholder
+    'BTC': '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // WBTC
+    'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    'SOL': '0xD31a59c85aE9D8edEFeC411D448f90841571b89c', // SOL on Ethereum
+    'ADA': '0x3Ee2200Efb3400fAbB9AacF31297cBdD1d435D47', // ADA on Ethereum
+    'DOT': '0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402', // DOT on Ethereum
+    'LINK': '0x514910771AF9Ca656af840dff83E8264EcF986CA',
+  };
 
   // State management
   const [currentStep, setCurrentStep] = useState(1); // 1: Swap Details, 2: Review, 3: Private Key
@@ -83,25 +96,53 @@ const SwapModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleExecuteSwap = () => {
+  const handleExecuteSwap = async () => {
     if (!privateKey.trim()) {
       setError('Private key is required to execute the swap');
       return;
     }
+
+    if (!account) {
+      setError('Wallet not connected');
+      return;
+    }
     
     setIsLoading(true);
-    // Simulate swap execution
-    setTimeout(() => {
+    setError('');
+    
+    try {
+      // Convert amount to wei (assuming 18 decimals for most tokens)
+      const amountInWei = (parseFloat(fromAmount) * Math.pow(10, 18)).toString();
+      
+      const swapParams = {
+        srcToken: TOKEN_ADDRESSES[fromToken.symbol],
+        dstToken: TOKEN_ADDRESSES[toToken.symbol],
+        amount: amountInWei,
+        slippage: parseFloat(slippage),
+        privateKey: privateKey.trim(),
+        walletAddress: account
+      };
+
+      const result = await executeSwap(swapParams);
+      
+      if (result.success) {
+        alert(`Swap executed successfully! Transaction Hash: ${result.transactionHash}`);
+        onClose();
+        // Reset form
+        setCurrentStep(1);
+        setFromAmount('');
+        setToAmount('');
+        setPrivateKey('');
+        setError('');
+      } else {
+        setError(result.error || 'Swap failed');
+      }
+    } catch (error) {
+      console.error('Swap execution error:', error);
+      setError(error.message || 'Failed to execute swap');
+    } finally {
       setIsLoading(false);
-      alert('Swap executed successfully! (This is a simulation)');
-      onClose();
-      // Reset form
-      setCurrentStep(1);
-      setFromAmount('');
-      setToAmount('');
-      setPrivateKey('');
-      setError('');
-    }, 2000);
+    }
   };
 
   const handleClose = () => {
