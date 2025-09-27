@@ -1,6 +1,7 @@
 from typing import Any
 import os
 import sys
+import time
 from mcp.server.fastmcp import FastMCP
 from wallet_functions import get_eth_balance, get_transactions
 from market_functions import get_coin_price, get_coin_market_data, get_multiple_coin_prices
@@ -24,6 +25,9 @@ except ImportError as e:
 # Create a FastMCP server instance
 mcp = FastMCP("wallet-market-fgi")
 
+# Global session storage (in production, use Redis or database)
+user_sessions = {}
+
 # Initialize MeTTa Knowledge Graph (optional)
 knowledge_graph = None
 if METTA_AVAILABLE:
@@ -31,6 +35,8 @@ if METTA_AVAILABLE:
         knowledge_graph = DeFiKnowledgeGraph()
         if knowledge_graph.is_available():
             print("🧠 Knowledge Graph initialized with symbolic reasoning capabilities")
+            # Clean up any expired sessions on startup
+            knowledge_graph.cleanup_expired_sessions()
         else:
             print("⚠️  Knowledge Graph initialized in fallback mode (MeTTa not available)")
     except Exception as e:
@@ -54,23 +60,113 @@ def get_coin_name(symbol):
     return coin_names.get(symbol.upper(), symbol.upper())
 
 @mcp.tool()
-async def get_wallet_balance(wallet_address: str) -> str:
-    """Get ETH balance for a wallet address with USD equivalent."""
+async def create_user_session(session_id: str, wallet_address: str, risk_profile: str = "moderate") -> str:
+    """Create a user session with wallet address. This should be called when user connects their wallet."""
     try:
+        if not knowledge_graph or not knowledge_graph.is_available():
+            return "Knowledge Graph not available. Session management disabled."
+        
+        # Validate wallet address format
+        if not wallet_address.startswith('0x') or len(wallet_address) != 42:
+            return "Invalid wallet address format. Please provide a valid Ethereum address."
+        
+        # Create preferences
+        preferences = {
+            'risk_profile': risk_profile,
+            'created_via': 'wallet_connection'
+        }
+        
+        success = knowledge_graph.create_user_session(session_id, wallet_address, preferences)
+        
+        if success:
+            result = f"✅ User session created successfully!\n"
+            result += f"Session ID: {session_id}\n"
+            result += f"Wallet: {wallet_address}\n"
+            result += f"Risk Profile: {risk_profile}\n"
+            result += f"Now I can help you with portfolio analysis without asking for your wallet address repeatedly!"
+            return result
+        else:
+            return "❌ Failed to create user session. Please try again."
+            
+    except Exception as e:
+        return f"Error creating user session: {str(e)}"
+
+@mcp.tool()
+async def get_session_info(session_id: str) -> str:
+    """Get information about the current user session."""
+    try:
+        if not knowledge_graph or not knowledge_graph.is_available():
+            return "Knowledge Graph not available. Session management disabled."
+        
+        summary = knowledge_graph.get_session_summary(session_id)
+        
+        if not summary.get('session_active'):
+            return f"No active session found for ID: {session_id}. Please connect your wallet first."
+        
+        result = f"📊 Session Information:\n"
+        result += f"Session ID: {session_id}\n"
+        result += f"Wallet Address: {summary.get('wallet_address', 'Not found')}\n"
+        result += f"Risk Profile: {summary.get('preferences', {}).get('risk_profile', 'Not set')}\n"
+        result += f"Session Active: {summary.get('session_active', False)}\n"
+        result += f"Last Active: {summary.get('last_active', 'Unknown')}\n"
+        
+        cache_status = summary.get('cache_status', {})
+        result += f"\n💾 Cache Status:\n"
+        result += f"Cached Symbols: {len(cache_status.get('cached_symbols', []))}\n"
+        if cache_status.get('cached_symbols'):
+            result += f"Symbols: {', '.join(cache_status['cached_symbols'])}\n"
+        result += f"Cache Duration: {cache_status.get('cache_duration_minutes', 0)} minutes\n"
+        
+        return result
+        
+    except Exception as e:
+        return f"Error retrieving session info: {str(e)}"
+
+@mcp.tool()
+async def get_wallet_balance(wallet_address: str = None, session_id: str = None) -> str:
+    """Get ETH balance for a wallet address with USD equivalent. Can use session_id instead of wallet_address if user is already connected."""
+    try:
+        # Try to get wallet from session if not provided
+        if not wallet_address and session_id and knowledge_graph:
+            wallet_address = knowledge_graph.get_user_wallet(session_id)
+            if not wallet_address:
+                return "❌ No wallet address found in session. Please provide wallet_address or connect your wallet first using create_user_session."
+        
+        if not wallet_address:
+            return "❌ Please provide either wallet_address or session_id with active session."
+            
         balance = await get_eth_balance(wallet_address)
         # Get transaction count for portfolio summary
         transactions = await get_transactions(wallet_address)
         transaction_count = len(transactions) if transactions else 0
         
-        # Get current ETH price for USD conversion
-        try:
-            eth_price = await get_coin_price("ETH")
-            balance_usd = balance * eth_price
-        except Exception as price_error:
-            eth_price = None
-            balance_usd = None
+        # Try to get ETH price from cache first
+        eth_price = None
+        balance_usd = None
         
-        result = f"Wallet Balance Information:\n"
+        if knowledge_graph and knowledge_graph.is_available():
+            cached_data = knowledge_graph.get_cached_market_data("ETH")
+            if cached_data and 'current_price' in cached_data:
+                eth_price = cached_data['current_price']
+                balance_usd = balance * eth_price
+                print("💰 Using cached ETH price for balance calculation")
+        
+        # Fallback to API if no cached price
+        if eth_price is None:
+            try:
+                eth_price = await get_coin_price("ETH")
+                balance_usd = balance * eth_price
+                
+                # Cache the price data
+                if knowledge_graph and knowledge_graph.is_available():
+                    knowledge_graph.cache_market_data("ETH", {
+                        'current_price': eth_price,
+                        'symbol': 'ETH'
+                    })
+            except Exception as price_error:
+                print(f"⚠️  Failed to fetch ETH price: {price_error}")
+        
+        result = f"💼 Wallet Balance Information:\n"
         result += f"Address: {wallet_address}\n"
         result += f"ETH Balance: {balance} ETH\n"
         
@@ -80,6 +176,9 @@ async def get_wallet_balance(wallet_address: str) -> str:
             result += f"USD Equivalent: Unable to fetch current ETH price\n"
             
         result += f"Total Transactions: {transaction_count}\n"
+        
+        if session_id:
+            result += f"\n🔗 Retrieved using session: {session_id[:8]}...\n"
         
         return result
     except Exception as e:
@@ -134,14 +233,36 @@ async def get_wallet_transactions(wallet_address: str) -> str:
 
 @mcp.tool()
 async def get_crypto_price(coin_symbol: str) -> str:
-    """Get current price for a cryptocurrency (BTC, ETH, SOL, etc.)."""
+    """Get current price for a cryptocurrency (BTC, ETH, SOL, etc.). Uses cached data when available to reduce API calls."""
     try:
-        price = await get_coin_price(coin_symbol)
+        coin_symbol = coin_symbol.upper()
         coin_name = get_coin_name(coin_symbol)
         
-        result = f"Current Price Information:\n"
-        result += f"Coin: {coin_name} ({coin_symbol.upper()})\n"
+        # Try to get price from cache first
+        price = None
+        source = "API"
+        
+        if knowledge_graph and knowledge_graph.is_available():
+            cached_data = knowledge_graph.get_cached_market_data(coin_symbol)
+            if cached_data and 'current_price' in cached_data:
+                price = cached_data['current_price']
+                source = "Cache"
+                
+        # Fallback to API if no cached price
+        if price is None:
+            price = await get_coin_price(coin_symbol)
+            
+            # Cache the new price data
+            if knowledge_graph and knowledge_graph.is_available():
+                knowledge_graph.cache_market_data(coin_symbol, {
+                    'current_price': price,
+                    'symbol': coin_symbol
+                })
+        
+        result = f"💹 Current Price Information:\n"
+        result += f"Coin: {coin_name} ({coin_symbol})\n"
         result += f"Price: ${price:,.2f} USD\n"
+        result += f"Data Source: {source}\n"
         
         return result
     except Exception as e:
@@ -170,18 +291,62 @@ async def get_crypto_market_data(coin_symbol: str) -> str:
 
 @mcp.tool()
 async def get_multiple_crypto_prices(coin_symbols: str) -> str:
-    """Get current prices for multiple cryptocurrencies. Provide symbols separated by commas (e.g., 'BTC,ETH,SOL')."""
+    """Get current prices for multiple cryptocurrencies. Provide symbols separated by commas (e.g., 'BTC,ETH,SOL'). Uses cached data when available."""
     try:
-        symbols = [s.strip() for s in coin_symbols.split(',')]
-        prices = await get_multiple_coin_prices(symbols)
+        symbols = [s.strip().upper() for s in coin_symbols.split(',')]
         
-        if not prices:
+        cached_prices = {}
+        symbols_to_fetch = []
+        
+        # Check cache first
+        if knowledge_graph and knowledge_graph.is_available():
+            cached_prices = knowledge_graph.get_multiple_cached_prices(symbols)
+            symbols_to_fetch = [symbol for symbol, price in cached_prices.items() if price is None]
+            cached_count = len([p for p in cached_prices.values() if p is not None])
+            
+            if cached_count > 0:
+                print(f"📊 Found {cached_count} prices in cache, need to fetch {len(symbols_to_fetch)} from API")
+        else:
+            symbols_to_fetch = symbols
+        
+        # Fetch missing prices from API
+        api_prices = {}
+        if symbols_to_fetch:
+            api_prices = await get_multiple_coin_prices(symbols_to_fetch)
+            
+            # Cache the new prices
+            if knowledge_graph and knowledge_graph.is_available():
+                for symbol, price in api_prices.items():
+                    knowledge_graph.cache_market_data(symbol, {
+                        'current_price': price,
+                        'symbol': symbol
+                    })
+        
+        # Combine cached and API prices
+        all_prices = {}
+        for symbol in symbols:
+            if symbol in cached_prices and cached_prices[symbol] is not None:
+                all_prices[symbol] = {'price': cached_prices[symbol], 'source': 'Cache'}
+            elif symbol in api_prices:
+                all_prices[symbol] = {'price': api_prices[symbol], 'source': 'API'}
+        
+        if not all_prices:
             return "No prices found for the provided symbols. Please check the symbols and try again."
         
-        result = "Current Cryptocurrency Prices:\n\n"
-        for symbol, price in prices.items():
-            coin_name = get_coin_name(symbol)
-            result += f"{coin_name} ({symbol.upper()}): ${price:,.2f} USD\n"
+        result = "💹 Current Cryptocurrency Prices:\n\n"
+        for symbol in symbols:
+            if symbol in all_prices:
+                coin_name = get_coin_name(symbol)
+                price_info = all_prices[symbol]
+                result += f"{coin_name} ({symbol}): ${price_info['price']:,.2f} USD ({price_info['source']})\n"
+            else:
+                result += f"{symbol}: Price not available\n"
+        
+        # Add cache efficiency info
+        if knowledge_graph and knowledge_graph.is_available():
+            cached_count = len([info for info in all_prices.values() if info['source'] == 'Cache'])
+            if cached_count > 0:
+                result += f"\n💾 Cache Efficiency: {cached_count}/{len(all_prices)} prices from cache"
         
         return result
     except Exception as e:
@@ -229,44 +394,77 @@ async def get_fear_greed_history(days: int = 7) -> str:
         return f"Error fetching Fear & Greed Index history: {str(e)}. Please try again later."
 
 @mcp.tool()
-async def get_portfolio_summary(wallet_address: str) -> str:
-    """Get comprehensive portfolio summary with USD values and asset breakdown."""
+async def get_portfolio_summary(wallet_address: str = None, session_id: str = None) -> str:
+    """Get comprehensive portfolio summary with USD values and asset breakdown. Can use session_id instead of wallet_address if user is already connected."""
     try:
+        # Try to get wallet from session if not provided
+        if not wallet_address and session_id and knowledge_graph:
+            wallet_address = knowledge_graph.get_user_wallet(session_id)
+            if not wallet_address:
+                return "❌ No wallet address found in session. Please provide wallet_address or connect your wallet first using create_user_session."
+        
+        if not wallet_address:
+            return "❌ Please provide either wallet_address or session_id with active session."
+            
         balance = await get_eth_balance(wallet_address)
         transactions = await get_transactions(wallet_address)
         transaction_count = len(transactions) if transactions else 0
         
-        # Get current ETH price for USD conversion
-        try:
-            eth_price = await get_coin_price("ETH")
-            total_balance_usd = balance * eth_price
-        except Exception as price_error:
-            eth_price = None
-            total_balance_usd = None
+        # Try to get ETH price from cache first
+        eth_price = None
+        total_balance_usd = None
+        price_source = "API"
         
-        result = f"Portfolio Summary:\n"
+        if knowledge_graph and knowledge_graph.is_available():
+            cached_data = knowledge_graph.get_cached_market_data("ETH")
+            if cached_data and 'current_price' in cached_data:
+                eth_price = cached_data['current_price']
+                total_balance_usd = balance * eth_price
+                price_source = "Cache"
+        
+        # Fallback to API if no cached price
+        if eth_price is None:
+            try:
+                eth_price = await get_coin_price("ETH")
+                total_balance_usd = balance * eth_price
+                
+                # Cache the price data
+                if knowledge_graph and knowledge_graph.is_available():
+                    knowledge_graph.cache_market_data("ETH", {
+                        'current_price': eth_price,
+                        'symbol': 'ETH'
+                    })
+            except Exception as price_error:
+                print(f"⚠️  Failed to fetch ETH price: {price_error}")
+        
+        result = f"📊 Portfolio Summary:\n"
         result += f"Wallet Address: {wallet_address}\n"
-        result += f"Network: Ethereum Mainnet\n\n"
+        result += f"Network: Ethereum Mainnet\n"
+        
+        if session_id:
+            result += f"Session: {session_id[:8]}...\n"
+        
+        result += "\n"
         
         # Total portfolio value
         if total_balance_usd is not None:
-            result += f"Total Portfolio Value: ${total_balance_usd:,.2f} USD\n\n"
+            result += f"💰 Total Portfolio Value: ${total_balance_usd:,.2f} USD\n\n"
         else:
-            result += f"Total Portfolio Value: Unable to calculate (ETH price unavailable)\n\n"
+            result += f"💰 Total Portfolio Value: Unable to calculate (ETH price unavailable)\n\n"
             
         # Asset breakdown
-        result += f"Assets:\n"
+        result += f"📈 Assets:\n"
         result += f"• ETH: {balance} ETH"
         if eth_price is not None and total_balance_usd is not None:
             result += f" (${total_balance_usd:,.2f} USD, 100.0%)\n"
         else:
             result += f" (USD value unavailable)\n"
             
-        result += f"\nTransaction History:\n"
+        result += f"\n📋 Transaction History:\n"
         result += f"Total Transactions: {transaction_count}\n"
         
         if transactions:
-            result += f"\nRecent Activity:\n"
+            result += f"\n🔄 Recent Activity:\n"
             for i, tx in enumerate(transactions[:3]):  # Show top 3 transactions
                 tx_value = tx.get('value_eth', 0) if isinstance(tx, dict) else getattr(tx, 'value_eth', 0)
                 tx_hash = tx.get('hash', 'N/A') if isinstance(tx, dict) else getattr(tx, 'hash', 'N/A')
@@ -281,7 +479,7 @@ async def get_portfolio_summary(wallet_address: str) -> str:
                     result += "\n"
         
         if eth_price is not None:
-            result += f"\nCurrent ETH Price: ${eth_price:,.2f} USD\n"
+            result += f"\n💹 Current ETH Price: ${eth_price:,.2f} USD ({price_source})\n"
             
         return result
     except Exception as e:
@@ -568,6 +766,82 @@ async def get_ai_portfolio_recommendation(risk_profile: str, investment_amount: 
         
     except Exception as e:
         return f"Error generating AI portfolio recommendation: {str(e)}"
+
+@mcp.tool()
+async def manage_cache(action: str = "status", symbol: str = None) -> str:
+    """Manage market data cache. Actions: 'status', 'clear', 'clear_all', 'refresh'. Optional symbol parameter for specific operations."""
+    try:
+        if not knowledge_graph or not knowledge_graph.is_available():
+            return "Knowledge Graph not available. Cache management disabled."
+        
+        if action == "status":
+            # Show cache status
+            cache_status = knowledge_graph.market_data_cache
+            result = f"💾 Market Data Cache Status:\n"
+            result += f"Cached Symbols: {len(cache_status)}\n"
+            result += f"Cache Duration: {knowledge_graph.cache_duration // 60} minutes\n\n"
+            
+            if cache_status:
+                result += f"📊 Cached Data:\n"
+                for symbol, cache_entry in cache_status.items():
+                    age_seconds = time.time() - cache_entry['timestamp']
+                    age_minutes = int(age_seconds // 60)
+                    price = cache_entry['data'].get('current_price', 'N/A')
+                    result += f"• {symbol}: ${price:,.2f} USD (Age: {age_minutes}m {int(age_seconds % 60)}s)\n"
+            else:
+                result += "No cached data available.\n"
+                
+            return result
+            
+        elif action == "clear" and symbol:
+            # Clear specific symbol cache
+            symbol = symbol.upper()
+            knowledge_graph.invalidate_cache(symbol)
+            return f"✅ Cleared cache for {symbol}"
+            
+        elif action == "clear_all":
+            # Clear all cache
+            knowledge_graph.invalidate_cache()
+            return "✅ Cleared all market data cache"
+            
+        elif action == "refresh" and symbol:
+            # Refresh specific symbol (clear cache and fetch new data)
+            symbol = symbol.upper()
+            knowledge_graph.invalidate_cache(symbol)
+            
+            # Fetch fresh data
+            try:
+                price = await get_coin_price(symbol)
+                knowledge_graph.cache_market_data(symbol, {
+                    'current_price': price,
+                    'symbol': symbol
+                })
+                return f"🔄 Refreshed {symbol}: ${price:,.2f} USD"
+            except Exception as e:
+                return f"❌ Failed to refresh {symbol}: {e}"
+                
+        else:
+            return "❌ Invalid action. Use: 'status', 'clear' (with symbol), 'clear_all', or 'refresh' (with symbol)"
+            
+    except Exception as e:
+        return f"Error managing cache: {str(e)}"
+
+@mcp.tool()
+async def cleanup_sessions(max_age_hours: int = 24) -> str:
+    """Cleanup expired user sessions and cache data. Default: remove sessions older than 24 hours."""
+    try:
+        if not knowledge_graph or not knowledge_graph.is_available():
+            return "Knowledge Graph not available. Session cleanup disabled."
+            
+        cleaned_count = knowledge_graph.cleanup_expired_sessions(max_age_hours)
+        
+        if cleaned_count > 0:
+            return f"🧹 Cleanup completed! Removed {cleaned_count} expired sessions and old cache entries."
+        else:
+            return f"✅ No expired sessions found. System is clean!"
+            
+    except Exception as e:
+        return f"Error during cleanup: {str(e)}"
 
 @mcp.tool()
 async def get_metta_knowledge_status() -> str:

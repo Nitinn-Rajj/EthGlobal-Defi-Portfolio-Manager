@@ -5,7 +5,9 @@ for cryptocurrency analysis, portfolio optimization, and risk assessment.
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
+import time
 
 try:
     from hyperon import MeTTa, E, S, V, ValueAtom, OperationAtom
@@ -46,10 +48,18 @@ class DeFiKnowledgeGraph:
         
         self.metta = MeTTa()
         self.available = True
+        
+        # Session and cache management
+        self.active_sessions = {}  # user_id -> session_data
+        self.market_data_cache = {}  # symbol -> {data, timestamp}
+        self.cache_duration = 300  # 5 minutes cache for market data
+        
+        # Initialize knowledge base
         self._initialize_defi_knowledge()
         self._initialize_portfolio_rules()
         self._initialize_risk_management()
         self._initialize_market_patterns()
+        self._initialize_user_management()
     
     def is_available(self) -> bool:
         """Check if MeTTa is available and knowledge graph is functional."""
@@ -402,3 +412,238 @@ class DeFiKnowledgeGraph:
         summary['risk_assessments'] = len(risk_results[0]) if risk_results and risk_results[0] else 0
         
         return summary
+
+    def _initialize_user_management(self):
+        """Initialize user management and session tracking."""
+        if not self.is_available():
+            return
+            
+        # Add user session management schema
+        self.metta.space().add_atom(E(S("user_session_schema"), S("session_id"), S("wallet_address"), S("created_at"), S("last_active")))
+        self.metta.space().add_atom(E(S("user_preference_schema"), S("user_id"), S("risk_profile"), S("preferred_tokens"), S("notification_settings")))
+        
+    def create_user_session(self, session_id: str, wallet_address: str, user_preferences: Dict[str, Any] = None) -> bool:
+        """Create a new user session with wallet address and preferences."""
+        if not self.is_available():
+            return False
+            
+        try:
+            current_time = datetime.now().isoformat()
+            
+            # Store session data in memory for quick access
+            self.active_sessions[session_id] = {
+                'wallet_address': wallet_address,
+                'created_at': current_time,
+                'last_active': current_time,
+                'preferences': user_preferences or {}
+            }
+            
+            # Add to MeTTa knowledge graph
+            self.metta.space().add_atom(E(S("user_session"), S(session_id), S(wallet_address), ValueAtom(current_time)))
+            self.metta.space().add_atom(E(S("session_active"), S(session_id), ValueAtom(True)))
+            
+            # Store user preferences if provided
+            if user_preferences:
+                for key, value in user_preferences.items():
+                    self.metta.space().add_atom(E(S("user_preference"), S(session_id), S(key), ValueAtom(value)))
+            
+            print(f"✅ User session created: {session_id[:8]}... -> {wallet_address[:10]}...")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error creating user session: {e}")
+            return False
+    
+    def get_user_wallet(self, session_id: str) -> Optional[str]:
+        """Get wallet address for a user session."""
+        if not self.is_available():
+            return None
+            
+        # First check memory cache
+        if session_id in self.active_sessions:
+            self.active_sessions[session_id]['last_active'] = datetime.now().isoformat()
+            return self.active_sessions[session_id]['wallet_address']
+        
+        # Query MeTTa if not in cache
+        try:
+            query = f'!(match &self (user_session {session_id} $wallet $time) $wallet)'
+            results = self.metta.run(query)
+            
+            if results and results[0]:
+                wallet_address = str(results[0][0])
+                
+                # Update cache
+                self.active_sessions[session_id] = {
+                    'wallet_address': wallet_address,
+                    'last_active': datetime.now().isoformat()
+                }
+                
+                return wallet_address
+                
+        except Exception as e:
+            print(f"❌ Error retrieving wallet for session {session_id}: {e}")
+            
+        return None
+    
+    def update_user_preferences(self, session_id: str, preferences: Dict[str, Any]) -> bool:
+        """Update user preferences for a session."""
+        if not self.is_available():
+            return False
+            
+        try:
+            # Update memory cache
+            if session_id in self.active_sessions:
+                self.active_sessions[session_id]['preferences'].update(preferences)
+                self.active_sessions[session_id]['last_active'] = datetime.now().isoformat()
+            
+            # Update MeTTa knowledge graph
+            for key, value in preferences.items():
+                self.metta.space().add_atom(E(S("user_preference"), S(session_id), S(key), ValueAtom(value)))
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error updating user preferences: {e}")
+            return False
+    
+    def get_cached_market_data(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get cached market data if still valid."""
+        if not self.is_available():
+            return None
+            
+        symbol = symbol.upper()
+        
+        if symbol in self.market_data_cache:
+            cache_entry = self.market_data_cache[symbol]
+            cache_age = time.time() - cache_entry['timestamp']
+            
+            if cache_age < self.cache_duration:
+                print(f"📊 Using cached data for {symbol} (age: {cache_age:.1f}s)")
+                return cache_entry['data']
+            else:
+                # Remove expired cache
+                del self.market_data_cache[symbol]
+                
+        return None
+    
+    def cache_market_data(self, symbol: str, data: Dict[str, Any]) -> None:
+        """Cache market data for a symbol."""
+        if not self.is_available():
+            return
+            
+        symbol = symbol.upper()
+        self.market_data_cache[symbol] = {
+            'data': data,
+            'timestamp': time.time()
+        }
+        
+        # Also store in MeTTa for persistence
+        try:
+            if 'current_price' in data:
+                self.add_market_data(
+                    symbol, 
+                    data['current_price'],
+                    data.get('volume_24h', 0),
+                    data.get('market_cap', 0),
+                    data.get('price_change_24h', 0)
+                )
+            print(f"💾 Cached market data for {symbol}")
+        except Exception as e:
+            print(f"⚠️  Failed to persist market data for {symbol}: {e}")
+    
+    def get_multiple_cached_prices(self, symbols: List[str]) -> Dict[str, Optional[float]]:
+        """Get cached prices for multiple symbols."""
+        if not self.is_available():
+            return {}
+            
+        results = {}
+        for symbol in symbols:
+            cached_data = self.get_cached_market_data(symbol)
+            if cached_data and 'current_price' in cached_data:
+                results[symbol.upper()] = cached_data['current_price']
+            else:
+                results[symbol.upper()] = None
+                
+        return results
+    
+    def invalidate_cache(self, symbol: str = None) -> None:
+        """Invalidate cache for a specific symbol or all symbols."""
+        if symbol:
+            symbol = symbol.upper()
+            if symbol in self.market_data_cache:
+                del self.market_data_cache[symbol]
+                print(f"🗑️  Invalidated cache for {symbol}")
+        else:
+            self.market_data_cache.clear()
+            print("🗑️  Invalidated all market data cache")
+    
+    def get_session_summary(self, session_id: str) -> Dict[str, Any]:
+        """Get comprehensive session information."""
+        if not self.is_available():
+            return {}
+            
+        summary = {
+            'session_id': session_id,
+            'wallet_address': None,
+            'preferences': {},
+            'session_active': False,
+            'cache_status': {}
+        }
+        
+        # Get session data
+        if session_id in self.active_sessions:
+            session_data = self.active_sessions[session_id]
+            summary.update({
+                'wallet_address': session_data['wallet_address'],
+                'preferences': session_data.get('preferences', {}),
+                'session_active': True,
+                'last_active': session_data.get('last_active'),
+                'created_at': session_data.get('created_at')
+            })
+        
+        # Get cache status
+        summary['cache_status'] = {
+            'cached_symbols': list(self.market_data_cache.keys()),
+            'cache_count': len(self.market_data_cache),
+            'cache_duration_minutes': self.cache_duration // 60
+        }
+        
+        return summary
+    
+    def cleanup_expired_sessions(self, max_age_hours: int = 24) -> int:
+        """Clean up expired user sessions."""
+        if not self.is_available():
+            return 0
+            
+        cleaned_count = 0
+        current_time = datetime.now()
+        cutoff_time = current_time - timedelta(hours=max_age_hours)
+        
+        # Clean up memory cache
+        expired_sessions = []
+        for session_id, session_data in self.active_sessions.items():
+            try:
+                last_active = datetime.fromisoformat(session_data['last_active'])
+                if last_active < cutoff_time:
+                    expired_sessions.append(session_id)
+            except Exception:
+                expired_sessions.append(session_id)  # Clean up malformed sessions
+        
+        for session_id in expired_sessions:
+            del self.active_sessions[session_id]
+            cleaned_count += 1
+            
+        # Clean up market data cache
+        expired_cache = []
+        for symbol, cache_entry in self.market_data_cache.items():
+            cache_age = time.time() - cache_entry['timestamp']
+            if cache_age > (max_age_hours * 3600):  # Convert hours to seconds
+                expired_cache.append(symbol)
+                
+        for symbol in expired_cache:
+            del self.market_data_cache[symbol]
+            
+        if cleaned_count > 0:
+            print(f"🧹 Cleaned up {cleaned_count} expired sessions and {len(expired_cache)} expired cache entries")
+            
+        return cleaned_count
