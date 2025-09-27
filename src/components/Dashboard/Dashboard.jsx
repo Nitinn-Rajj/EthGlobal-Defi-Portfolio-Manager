@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 import { formatBalance } from '../../utils/wallet';
+import { AIChat } from '../AIChat';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -250,6 +251,11 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* AI Chat Assistant */}
+          <div className="dashboard__card dashboard__card--chat">
+            <AIChat />
           </div>
         </div>
       </div>
