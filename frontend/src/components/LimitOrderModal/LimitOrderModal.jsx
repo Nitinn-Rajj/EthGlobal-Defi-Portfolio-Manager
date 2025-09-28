@@ -115,7 +115,6 @@ const LimitOrderModal = ({ isOpen, onClose }) => {
       const result = await createLimitOrder(orderParams);
       
       if (result.success) {
-        alert(`Limit order created successfully! Order Hash: ${result.orderHash}`);
         onClose();
         // Reset form
         setCurrentStep(1);

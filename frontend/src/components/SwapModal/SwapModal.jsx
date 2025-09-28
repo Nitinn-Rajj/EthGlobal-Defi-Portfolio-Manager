@@ -126,7 +126,6 @@ const SwapModal = ({ isOpen, onClose }) => {
       const result = await executeSwap(swapParams);
       
       if (result.success) {
-        alert(`Swap executed successfully! Transaction Hash: ${result.transactionHash}`);
         onClose();
         // Reset form
         setCurrentStep(1);

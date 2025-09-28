@@ -8,9 +8,10 @@ import TextType from './components/textanimation/index'
 import ChatPanel from './components/ChatPanel/ChatPanel'
 import FloatingChatButton from './components/FloatingChatButton/FloatingChatButton'
 import DebugInfo from './components/DebugInfo'
+import SuccessNotification from './components/shared/SuccessNotification'
 import { WalletProvider, useWallet } from './contexts/WalletContext'
 import { ChatProvider, useChat } from './contexts/ChatContext'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Inner App component to use chat context
 const AppContent = () => {
@@ -18,10 +19,35 @@ const AppContent = () => {
   const { refreshDashboardData, isConnected, hasLoadedDashboardThisSession, getDashboardRequestStats } = useWallet();
   const refreshFunctionRef = useRef(refreshDashboardData);
 
+  // Success notification state
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationData, setNotificationData] = useState({});
+
   // Keep the ref updated
   useEffect(() => {
     refreshFunctionRef.current = refreshDashboardData;
   }, [refreshDashboardData]);
+
+  // Listen for success notification events
+  useEffect(() => {
+    const handleSuccessNotification = (event) => {
+      const { type, data } = event.detail;
+      setNotificationData({ type, data });
+      setShowNotification(true);
+    };
+
+    window.addEventListener('showSuccessNotification', handleSuccessNotification);
+    
+    return () => {
+      window.removeEventListener('showSuccessNotification', handleSuccessNotification);
+    };
+  }, []);
+
+  // Handle notification close
+  const handleCloseNotification = () => {
+    setShowNotification(false);
+    setNotificationData({});
+  };
 
   // Load dashboard data when app component mounts (page load/refresh) - only if not already loaded
   useEffect(() => {
@@ -105,6 +131,12 @@ const AppContent = () => {
       <ScrollIndicator />
       <ChatPanel />
       <FloatingChatButton />
+      <SuccessNotification
+        isVisible={showNotification}
+        onClose={handleCloseNotification}
+        type={notificationData.type}
+        data={notificationData.data}
+      />
       {/* <DebugInfo /> */}
     </div>
   );
