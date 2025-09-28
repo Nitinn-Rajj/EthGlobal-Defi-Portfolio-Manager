@@ -15,7 +15,7 @@ import { WalletProvider, useWallet } from './contexts/WalletContext'
 import { ChatProvider, useChat } from './contexts/ChatContext'
 import { SwapProvider, useSwap } from './contexts/SwapContext'
 import { LimitOrderProvider, useLimitOrder } from './contexts/LimitOrderContext'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef , useState } from 'react'
 
 // Inner App component to use chat context
 const AppContent = () => {
