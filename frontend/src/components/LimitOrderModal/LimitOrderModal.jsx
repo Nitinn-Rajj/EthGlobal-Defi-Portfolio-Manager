@@ -3,7 +3,7 @@ import { useWallet } from '../../contexts/WalletContext';
 import { createLimitOrder } from '../../apiservices/tradingService';
 import './LimitOrderModal.css';
 
-const LimitOrderModal = ({ isOpen, onClose }) => {
+const LimitOrderModal = ({ isOpen, onClose, initialConfig }) => {
   // Available tokens for limit orders
   const AVAILABLE_TOKENS = [
     { symbol: 'ETH', name: 'Ethereum', icon: '⟠', color: '#627EEA' },
@@ -44,6 +44,69 @@ const LimitOrderModal = ({ isOpen, onClose }) => {
   
   // Get wallet context
   const { isConnected, account, balance } = useWallet();
+
+  // Helper function to find token by symbol
+  const findTokenBySymbol = (symbol) => {
+    return AVAILABLE_TOKENS.find(token => 
+      token.symbol.toLowerCase() === symbol?.toLowerCase()
+    ) || null;
+  };
+
+  // Initialize modal with config when it opens
+  useEffect(() => {
+    if (isOpen && initialConfig) {
+      console.log('📋 Initializing LimitOrderModal with config:', initialConfig);
+      
+      // Reset to step 1 when opening with new config
+      setCurrentStep(1);
+      
+      const { maker_coin, taker_coin, making_amount, taking_amount, expiry_time_hours } = initialConfig;
+      
+      // Find tokens by symbol
+      const makerTokenConfig = findTokenBySymbol(maker_coin);
+      const takerTokenConfig = findTokenBySymbol(taker_coin);
+      
+      if (makerTokenConfig) {
+        setMakerToken(makerTokenConfig);
+        console.log('✅ Set makerToken:', makerTokenConfig);
+      }
+      
+      if (takerTokenConfig) {
+        setTakerToken(takerTokenConfig);
+        console.log('✅ Set takerToken:', takerTokenConfig);
+      }
+      
+      if (making_amount && parseFloat(making_amount) > 0) {
+        setMakingAmount(making_amount.toString());
+        console.log('✅ Set makingAmount:', making_amount);
+      }
+      
+      if (taking_amount && parseFloat(taking_amount) > 0) {
+        setTakingAmount(taking_amount.toString());
+        console.log('✅ Set takingAmount:', taking_amount);
+      }
+      
+      if (expiry_time_hours && parseFloat(expiry_time_hours) > 0) {
+        setExpiryTime(expiry_time_hours.toString());
+        console.log('✅ Set expiryTime:', expiry_time_hours);
+      }
+      
+      // Clear previous error and private key when opening with new config
+      setError('');
+      setPrivateKey('');
+    } else if (isOpen && !initialConfig) {
+      // Reset to defaults when opening without config
+      setCurrentStep(1);
+      setMakerToken(AVAILABLE_TOKENS[0]);
+      setTakerToken(AVAILABLE_TOKENS[2]);
+      setMakingAmount('');
+      setTakingAmount('');
+      setPriceRatio('');
+      setExpiryTime('24');
+      setError('');
+      setPrivateKey('');
+    }
+  }, [isOpen, initialConfig]);
 
   // No token price conversion required
 

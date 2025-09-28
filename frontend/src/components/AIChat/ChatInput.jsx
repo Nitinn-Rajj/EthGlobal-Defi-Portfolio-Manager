@@ -21,8 +21,8 @@ const ChatInput = ({ onSendMessage, disabled }) => {
   const quickActions = [
     'Show my portfolio',
     'Swap 0.1 ETH to USDC',
-    'Find best yield opportunities',
-    'Analyze market trends'
+    'Market price of BTC and ETH',
+   	'What is the market sentiment right now?'
   ];
 
   const handleQuickAction = (action) => {

@@ -170,6 +170,7 @@
 
 .swap-input-group {
   display: flex;
+  align-items: center;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -192,6 +193,7 @@
   justify-content: space-between;
   padding: 16px;
   min-width: 140px;
+  flex-shrink: 0;
   cursor: pointer;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
@@ -241,9 +243,12 @@
   color: var(--color-text, #ffffff);
   font-size: 1.1rem;
   font-weight: 600;
-  padding: 16px;
-  text-align: right;
+  padding: 16px 16px 16px 8px;
+  text-align: left;
   outline: none;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .amount-input::placeholder {
@@ -550,7 +555,7 @@
   
   .amount-input {
     font-size: 1rem;
-    padding: 12px;
+    padding: 12px 12px 12px 8px;
   }
   
   .swap-modal__header {

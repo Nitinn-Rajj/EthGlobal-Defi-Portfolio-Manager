@@ -6,10 +6,14 @@ import { processText } from '../../utils/parser';
 import { getChatResponse } from '../../apiservices/chatService';
 import { getTotalBalanceUSD, getPortfolioData } from '../../apiservices/dashboardService';
 import { useWallet } from '../../contexts/WalletContext';
+import { useSwap } from '../../contexts/SwapContext';
+import { useLimitOrder } from '../../contexts/LimitOrderContext';
 import './AIChat.css';
 
 const AIChat = () => {
   const { dashboardData, account, balance, network } = useWallet();
+  const { openSwapModal } = useSwap();
+  const { openLimitOrderModal } = useLimitOrder();
   
   const [messages, setMessages] = useState([
     {
@@ -133,11 +137,9 @@ const AIChat = () => {
     setIsLoading(true);
     
     try {
-      console.log('💬 Sending message to chat service:', userMessage);
-      console.log('🔍 Wallet context:', { account, balance, network });
-      console.log('📊 Dashboard data:', dashboardData);
+      console.log('💬 Processing user message:', userMessage);
       
-      // Prepare wallet context for the chat service
+      // Prepare wallet context for potential backend calls
       const walletContext = {
         account,
         balance,
@@ -145,15 +147,11 @@ const AIChat = () => {
         isConnected: !!account
       };
       
-      // Step 1: Get response from chat service (backend agents) with context
-      const chatResponse = await getChatResponse(userMessage, walletContext, dashboardData);
-      console.log('✅ Chat service response:', chatResponse);
-      
-      // Step 2: Parse the response using the parser
-      const parsedResult = await processText(chatResponse);
+      // Step 1: First parse the user message to determine intent
+      const parsedResult = await processText(userMessage);
       console.log('🎯 Parser result:', parsedResult);
       
-      // Step 3: Create appropriate AI message based on parsed type
+      // Step 2: Handle different types based on parsed result
       let aiMessage = {
         id: Date.now(),
         type: 'ai',
@@ -161,29 +159,67 @@ const AIChat = () => {
       };
 
       switch (parsedResult.type) {
+        case 'swap':
+          // Directly open swap modal with parsed data
+          console.log('� Opening swap modal directly for:', parsedResult.data);
+          
+          if (parsedResult.data && parsedResult.data.initial_coin && parsedResult.data.target_coin) {
+            openSwapModal({
+              initial_coin: parsedResult.data.initial_coin,
+              target_coin: parsedResult.data.target_coin,
+              amount: parsedResult.data.amount || 0
+            });
+            
+            aiMessage.content = `Opening swap interface for ${parsedResult.data.initial_coin} → ${parsedResult.data.target_coin}${parsedResult.data.amount ? ` (${parsedResult.data.amount})` : ''}. Please complete the swap in the modal.`;
+          } else {
+            // If parsing didn't extract enough data, open modal with defaults
+            openSwapModal();
+            aiMessage.content = 'Opening swap interface. Please select your tokens and amount in the modal.';
+          }
+          break;
+          
+        case 'limit_order':
+          // Directly open limit order modal with parsed data
+          console.log('📋 Opening limit order modal directly for:', parsedResult.data);
+          
+          if (parsedResult.data && parsedResult.data.maker_coin && parsedResult.data.taker_coin) {
+            openLimitOrderModal({
+              maker_coin: parsedResult.data.maker_coin,
+              taker_coin: parsedResult.data.taker_coin,
+              making_amount: parsedResult.data.making_amount || 0,
+              taking_amount: parsedResult.data.taking_amount || 0,
+              expiry_time_hours: parsedResult.data.expiry_time_hours || 24
+            });
+            
+            aiMessage.content = `Opening limit order interface for ${parsedResult.data.maker_coin} → ${parsedResult.data.taker_coin}${parsedResult.data.making_amount ? ` (offering ${parsedResult.data.making_amount})` : ''}. Please complete the order in the modal.`;
+          } else {
+            // If parsing didn't extract enough data, open modal with defaults
+            openLimitOrderModal();
+            aiMessage.content = 'Opening limit order interface. Please select your tokens and amounts in the modal.';
+          }
+          break;
+          
         case 'portfolio_summary':
+          // For portfolio summary, still get backend response but with context
+          console.log('📊 Portfolio summary request - getting backend response with context');
+          
+          const portfolioResponse = await getChatResponse(userMessage, walletContext, dashboardData);
+          console.log('✅ Portfolio chat service response:', portfolioResponse);
+          
           aiMessage.content = 'Here\'s your current portfolio analysis:';
           aiMessage.structuredData = createPortfolioData();
           break;
           
         case 'other':
-          aiMessage.content = chatResponse; // Use the original chat response
-          break;
-          
-        case 'swap':
-          // For now, just show the response text - we'll handle swap modal later
-          aiMessage.content = chatResponse;
-          console.log('🔄 Swap request detected:', parsedResult.data);
-          break;
-          
-        case 'limit_order':
-          // For now, just show the response text - we'll handle limit orders later
-          aiMessage.content = chatResponse;
-          console.log('📋 Limit order detected:', parsedResult.data);
-          break;
-          
         default:
-          aiMessage.content = chatResponse;
+          // For other types, send to backend for processing
+          console.log('💭 Other request - sending to backend');
+          
+          const otherResponse = await getChatResponse(userMessage, walletContext, dashboardData);
+          console.log('✅ Other chat service response:', otherResponse);
+          
+          aiMessage.content = otherResponse;
+          break;
       }
       
       setMessages(prev => [...prev, aiMessage]);
@@ -219,35 +255,28 @@ const AIChat = () => {
   };
 
   const handleSwapConfirm = async (swapData) => {
-    setIsLoading(true);
+    console.log('🔄 Opening swap modal with data:', swapData);
     
-    try {
-      // Mock API call to execute swap
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const confirmationMessage = {
-        id: Date.now(),
-        type: 'ai',
-        content: `Swap executed successfully! You've swapped ${swapData.amount} ${swapData.fromToken} for ${swapData.estimatedReceive} ${swapData.toToken}.`,
-        isSuccess: true,
-        timestamp: Date.now()
-      };
-      
-      setMessages(prev => [...prev, confirmationMessage]);
-      setPendingSwap(null);
-      
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now(),
-        type: 'ai',
-        content: 'Failed to execute swap. Please try again or contact support.',
-        isError: true,
-        timestamp: Date.now()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+    // Prepare swap configuration for the modal
+    const swapConfig = {
+      initial_coin: swapData.fromToken,
+      target_coin: swapData.toToken,
+      amount: parseFloat(swapData.amount)
+    };
+    
+    // Open the swap modal with the configuration
+    openSwapModal(swapConfig);
+    
+    // Add confirmation message to chat
+    const confirmationMessage = {
+      id: Date.now(),
+      type: 'ai',
+      content: `Opening swap interface for ${swapData.amount} ${swapData.fromToken} → ${swapData.toToken}. Please complete the swap in the modal.`,
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, confirmationMessage]);
+    setPendingSwap(null);
   };
 
   const handleSwapReject = () => {
@@ -329,10 +358,12 @@ const AIChat = () => {
         />
       )}
       
-      <ChatInput 
-        onSendMessage={handleSendMessage}
-        disabled={isLoading}
-      />
+      <div className="aichat__input-container">
+        <ChatInput 
+          onSendMessage={handleSendMessage}
+          disabled={isLoading}
+        />
+      </div>
     </div>
   );
 };

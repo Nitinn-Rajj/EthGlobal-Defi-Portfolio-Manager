@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
+import { useSwap } from '../../contexts/SwapContext';
+import { useLimitOrder } from '../../contexts/LimitOrderContext';
 import { formatBalance } from '../../utils/wallet';
-import SwapModal from '../SwapModal/SwapModal';
-import LimitOrderModal from '../LimitOrderModal/LimitOrderModal';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -22,9 +22,10 @@ const Dashboard = () => {
         network
     } = useWallet();
     
+    const { openSwapModal } = useSwap();
+    const { openLimitOrderModal } = useLimitOrder();
+    
     const [activeTab, setActiveTab] = useState('overview');
-    const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
-    const [isLimitOrderModalOpen, setIsLimitOrderModalOpen] = useState(false);
     const [scrollY, setScrollY] = useState(0);
     const [isVisible, setIsVisible] = useState(true);
     
@@ -244,14 +245,14 @@ const Dashboard = () => {
                 </button>
                 <button 
                   className="dashboard__action-btn dashboard__action-btn--swap"
-                  onClick={() => setIsSwapModalOpen(true)}
+                  onClick={() => openSwapModal()}
                 >
                   <span className="dashboard__action-icon">🔄</span>
                   Swap
                 </button>
                 <button 
                   className="dashboard__action-btn dashboard__action-btn--limit-order"
-                  onClick={() => setIsLimitOrderModalOpen(true)}
+                  onClick={() => openLimitOrderModal()}
                 >
                   <span className="dashboard__action-icon">📊</span>
                   Limit Order
@@ -287,22 +288,6 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Swap Modal */}
-      {isSwapModalOpen && (
-        <SwapModal
-          isOpen={isSwapModalOpen}
-          onClose={() => setIsSwapModalOpen(false)}
-          tokens={tokens}
-        />
-      )}
-      
-      {/* Limit Order Modal */}
-      {isLimitOrderModalOpen && (
-        <LimitOrderModal
-          isOpen={isLimitOrderModalOpen}
-          onClose={() => setIsLimitOrderModalOpen(false)}
-        />
-      )}
     </section>
   );
 };

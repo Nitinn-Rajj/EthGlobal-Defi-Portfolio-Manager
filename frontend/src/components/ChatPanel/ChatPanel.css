@@ -78,25 +78,29 @@
 }
 
 /* Adjust AIChat component when inside panel */
-.chat-panel .aichat {
+.chat-panel .ai-chat {
   height: 100%;
   background: transparent;
   border: none;
   border-radius: 0;
+  max-height: none; /* Remove the 600px max-height constraint */
 }
 
-.chat-panel .aichat__container {
+.chat-panel .ai-chat__container {
   padding: 0;
   height: 100%;
 }
 
-.chat-panel .aichat__header {
+.chat-panel .ai-chat__header {
   display: none; /* Hide AIChat header since we have panel header */
 }
 
-.chat-panel .aichat__messages {
+
+.chat-panel .ai-chat__messages {
   padding: 20px 24px;
-  height: calc(100vh - 140px); /* Account for panel header and input */
+  /* Remove fixed height to let flexbox handle it naturally */
+  flex: 1;
+  min-height: 0; /* Allow shrinking */
 }
 
 .chat-panel .aichat__input-container {
@@ -153,9 +157,11 @@
     padding: 16px 20px;
   }
   
-  .chat-panel .aichat__messages {
+  .chat-panel .ai-chat__messages {
     padding: 16px 20px;
-    height: calc(100vh - 120px);
+    /* Remove fixed height for responsive too */
+    flex: 1;
+    min-height: 0;
   }
   
   .chat-panel .aichat__input-container {

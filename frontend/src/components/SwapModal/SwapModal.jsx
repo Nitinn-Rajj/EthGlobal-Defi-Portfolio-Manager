@@ -4,7 +4,7 @@ import { getCurrentPrices } from '../../apiservices/dashboardService';
 import { executeSwap } from '../../apiservices/tradingService';
 import './SwapModal.css';
 
-const SwapModal = ({ isOpen, onClose }) => {
+const SwapModal = ({ isOpen, onClose, initialConfig }) => {
   // Available tokens for swapping
   const AVAILABLE_TOKENS = [
     { symbol: 'ETH', name: 'Ethereum', icon: '⟠', color: '#627EEA' },
@@ -44,6 +44,57 @@ const SwapModal = ({ isOpen, onClose }) => {
   
   // Get wallet context
   const { dashboardData, isConnected, account, balance } = useWallet();
+
+  // Helper function to find token by symbol
+  const findTokenBySymbol = (symbol) => {
+    return AVAILABLE_TOKENS.find(token => 
+      token.symbol.toLowerCase() === symbol?.toLowerCase()
+    ) || null;
+  };
+
+  // Initialize modal with config when it opens
+  useEffect(() => {
+    if (isOpen && initialConfig) {
+      console.log('🎯 Initializing SwapModal with config:', initialConfig);
+      
+      // Reset to step 1 when opening with new config
+      setCurrentStep(1);
+      
+      const { initial_coin, target_coin, amount } = initialConfig;
+      
+      // Find tokens by symbol
+      const fromTokenConfig = findTokenBySymbol(initial_coin);
+      const toTokenConfig = findTokenBySymbol(target_coin);
+      
+      if (fromTokenConfig) {
+        setFromToken(fromTokenConfig);
+        console.log('✅ Set fromToken:', fromTokenConfig);
+      }
+      
+      if (toTokenConfig) {
+        setToToken(toTokenConfig);
+        console.log('✅ Set toToken:', toTokenConfig);
+      }
+      
+      if (amount && parseFloat(amount) > 0) {
+        setFromAmount(amount.toString());
+        console.log('✅ Set fromAmount:', amount);
+      }
+      
+      // Clear previous error and private key when opening with new config
+      setError('');
+      setPrivateKey('');
+    } else if (isOpen && !initialConfig) {
+      // Reset to defaults when opening without config
+      setCurrentStep(1);
+      setFromToken(AVAILABLE_TOKENS[0]);
+      setToToken(AVAILABLE_TOKENS[2]);
+      setFromAmount('');
+      setToAmount('');
+      setError('');
+      setPrivateKey('');
+    }
+  }, [isOpen, initialConfig]);
 
   // Get current token prices
   const getTokenPrices = () => {

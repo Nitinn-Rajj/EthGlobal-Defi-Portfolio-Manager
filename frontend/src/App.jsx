@@ -7,15 +7,21 @@ import ScrollIndicator from './components/ScrollIndicator/ScrollIndicator'
 import TextType from './components/textanimation/index'
 import ChatPanel from './components/ChatPanel/ChatPanel'
 import FloatingChatButton from './components/FloatingChatButton/FloatingChatButton'
+import SwapModal from './components/SwapModal/SwapModal'
+import LimitOrderModal from './components/LimitOrderModal/LimitOrderModal'
 import DebugInfo from './components/DebugInfo'
 import SuccessNotification from './components/shared/SuccessNotification'
 import { WalletProvider, useWallet } from './contexts/WalletContext'
 import { ChatProvider, useChat } from './contexts/ChatContext'
-import { useEffect, useRef, useState } from 'react'
+import { SwapProvider, useSwap } from './contexts/SwapContext'
+import { LimitOrderProvider, useLimitOrder } from './contexts/LimitOrderContext'
+import { useEffect, useRef } from 'react'
 
 // Inner App component to use chat context
 const AppContent = () => {
   const { isChatOpen } = useChat();
+  const { isSwapModalOpen, closeSwapModal, swapConfig } = useSwap();
+  const { isLimitOrderModalOpen, closeLimitOrderModal, limitOrderConfig } = useLimitOrder();
   const { refreshDashboardData, isConnected, hasLoadedDashboardThisSession, getDashboardRequestStats } = useWallet();
   const refreshFunctionRef = useRef(refreshDashboardData);
 
@@ -115,7 +121,7 @@ const AppContent = () => {
             as="h1"
             className="hero-title"
             style={{ zIndex: 3 }}
-            text={["Autonomous DeFi Portfolio Management", "AI-Powered Investment Strategies", "Smart Contract Optimization"]}
+            text={["DeFi, simplified through AI","Chat. Track. Trade. Done."]}
             typingSpeed={75}
             pauseDuration={1500}
             showCursor={true}
@@ -138,6 +144,24 @@ const AppContent = () => {
         data={notificationData.data}
       />
       {/* <DebugInfo /> */}
+      
+      {/* Global Swap Modal */}
+      {isSwapModalOpen && (
+        <SwapModal
+          isOpen={isSwapModalOpen}
+          onClose={closeSwapModal}
+          initialConfig={swapConfig}
+        />
+      )}
+      
+      {/* Global Limit Order Modal */}
+      {isLimitOrderModalOpen && (
+        <LimitOrderModal
+          isOpen={isLimitOrderModalOpen}
+          onClose={closeLimitOrderModal}
+          initialConfig={limitOrderConfig}
+        />
+      )}
     </div>
   );
 };
@@ -146,7 +170,11 @@ function App() {
   return (
     <WalletProvider>
       <ChatProvider>
-        <AppContent />
+        <SwapProvider>
+          <LimitOrderProvider>
+            <AppContent />
+          </LimitOrderProvider>
+        </SwapProvider>
       </ChatProvider>
     </WalletProvider>
   )
